@@ -1,11 +1,29 @@
-import React, { useState, Component, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { StyleSheet, View, Dimensions, Text } from "react-native";
-import { fonts } from "../styles/fonts";
 import Button from "../components/core/Button";
 import NewTimerBottomBar from "../components/compound/NewTimerBottomBar";
-import TimePicker from "../components/core/TimePicker";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("screen");
+
+function useInterval(callback, intervalDelay) {
+  const savedCallback = useRef();
+ 
+  // Remember the latest callback.
+  useEffect(() => {
+    savedCallback.current = callback;
+  }, [callback]);
+ 
+  // Set up the interval.
+  useEffect(() => {
+    function tick() {
+      savedCallback.current();
+    }
+    if (intervalDelay !== null) {
+      let id = setInterval(tick, intervalDelay);
+      return () => clearInterval(id);
+    }
+  }, [intervalDelay]);
+}
 
 const TimerMain = ({
   navigation,
@@ -20,25 +38,7 @@ const TimerMain = ({
   const [currentSec, setCurrentSec] = useState(0);
   const [delay, setDelay] = useState(null);
 
-  function useInterval(callback, delay) {
-    const savedCallback = useRef();
-   
-    // Remember the latest callback.
-    useEffect(() => {
-      savedCallback.current = callback;
-    }, [callback]);
-   
-    // Set up the interval.
-    useEffect(() => {
-      function tick() {
-        savedCallback.current();
-      }
-      if (delay !== null) {
-        let id = setInterval(tick, delay);
-        return () => clearInterval(id);
-      }
-    }, [delay]);
-  }
+
 
   useEffect(() => {
     if (route.params?.timer) {
@@ -55,7 +55,7 @@ const TimerMain = ({
   }, [route.params?.timer])
 
   useInterval(() => {
-    console.log(currentSec);
+
     setCurrentSec((currentMsec) => {
       if (currentMsec > 0) {
         return (currentMsec-1);
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
       gap: 2,
     },
     buttonContainer: {
-      fex: 1,
+      flex: 1,
       position: 'absolute',
       bottom: 90,
       width: "100%",

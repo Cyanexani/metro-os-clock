@@ -54,7 +54,7 @@ export const QuickMenu = ({
             <View className="w-[70%] justify-center flex-row">
                 {options.map((option) => {
                     return (
-                        <TouchableWithoutFeedback onPress={option.onPress}>
+                        <TouchableWithoutFeedback key={option.text} onPress={option.onPress}>
                             <View className="flex flex-col justify-between items-start mx-4 my-2 mb-3">
                                 <RoundedButton Icon={option.Icon} />
                                 {expanded && (<Text className="text-white text-sm" style={fonts.light}>{option.text}</Text>)}       

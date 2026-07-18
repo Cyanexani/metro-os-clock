@@ -1,5 +1,4 @@
 import { View, Text } from "react-native";
-import { Copy } from "react-native-feather";
 
 const RoundedButton = ({
     classOverrides = "",

@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, TouchableWithoutFeedback, StyleSheet, FlatList }  from "react-native";
+import React, { useState, useRef } from 'react';
+import { View, Text, TouchableWithoutFeedback, StyleSheet, FlatList }  from "react-native";
 import { LinearGradient } from 'expo-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
 
@@ -29,15 +29,17 @@ const TimePicker = ({
     borderWidth: BORDER_WIDTH,
   },
 }) => {
-  const [activeID, setActiveID] = useState(initialSelectedIndex);
+  const effectiveSquareCount = (squareCount & 1) ? squareCount : squareCount + 1;
+  const halfSquareCount = Math.floor(effectiveSquareCount/2);
+
+  const [activeID, setActiveID] = useState(initialSelectedIndex + halfSquareCount);
   const [scrollY, setScrollY] = useState(0);
   const [isScrolling, setIsScrolling] = useState(false);
   const [expanded, setExpanded] = useState(true);
   const flatListRef = useRef(null);
 
-  if (!(squareCount & 1)) ++squareCount;
   const SQUARE_HEIGHT_WITH_MARGIN = (squareDimension.height + squareDimension.margin*2);
-  const CONTAINER_MAX_HEIGHT = SQUARE_HEIGHT_WITH_MARGIN * squareCount;
+  const CONTAINER_MAX_HEIGHT = SQUARE_HEIGHT_WITH_MARGIN * effectiveSquareCount;
   const CONTAINER_MIN_HEIGHT = SQUARE_HEIGHT_WITH_MARGIN;
 
   const styles = StyleSheet.create({
@@ -72,32 +74,30 @@ const TimePicker = ({
     },
   });
 
-  const padValues = (values, selectedIndex) => {
+  const padValues = (valuesArr, selectedIndex) => {
     let index = 0;
     const data = [];
 
     // Adding top fake squares so the top-most value can be scrolled to the middle
-    let i = 1;
-    for (let j = 0; j < Math.floor(squareCount/2); ++j)
+    for (let j = 0; j < halfSquareCount; ++j)
     {
-        data.push({id: -i, text: '', state: false});
-        ++i;
+        data.push({index: index++, id: `fake-top-${j}`, text: '', state: false});
     }
 
-    for (let i = 0; i < values.length; i++) {
+    for (let k = 0; k < valuesArr.length; k++) {
       const item = {
         index: index++,
-        text: String(values[i]),
-        state: i === selectedIndex
+        id: `item-${k}`,
+        text: String(valuesArr[k]),
+        state: k === selectedIndex
       };    
       data.push(item);
     }
 
     // Adding bottom fake squares so the bottom-most value can be scrolled to the middle
-    for (let j = 0; j < Math.floor(squareCount/2); ++j)
+    for (let j = 0; j < halfSquareCount; ++j)
     {
-        data.push({id: -i, text: '', state: false});
-        ++i;
+        data.push({index: index++, id: `fake-bottom-${j}`, text: '', state: false});
     }
 
     return data;
@@ -105,14 +105,12 @@ const TimePicker = ({
 
   const [flatListData, setFlatListData] = useState(padValues(values, initialSelectedIndex));
 
-  useEffect(() => {
-    
-  }, [activeID])
+
 
   // scroll end handlers don't fire when touching on square causes the scrolling
   // So, we call onValueChange() here too
   const touchHandler = (item) => {
-    onValueChange(item.index, item.text); /* index and value */
+    onValueChange(item.index - halfSquareCount, item.text); /* index and value */
   }
 
 
@@ -121,11 +119,19 @@ const TimePicker = ({
     const offsetY = event.nativeEvent.contentOffset.y;
     setScrollY(offsetY);
     const topID = Math.round(offsetY / SQUARE_HEIGHT_WITH_MARGIN);
-    const centerID = topID + Math.floor(squareCount/2);
-    if (centerID != activeID && topID < values.length)
+    const centerID = topID + halfSquareCount;
+    if (centerID !== activeID && centerID >= halfSquareCount && centerID < halfSquareCount + values.length)
     {
-      flatListData[activeID].state = false;
-      flatListData[centerID].state = true;
+      setFlatListData(prevData => {
+        const newData = [...prevData];
+        if (newData[activeID]) {
+          newData[activeID] = { ...newData[activeID], state: false };
+        }
+        if (newData[centerID]) {
+          newData[centerID] = { ...newData[centerID], state: true };
+        }
+        return newData;
+      });
       setActiveID(centerID);
     }
   }
@@ -143,7 +149,9 @@ const TimePicker = ({
   }
 
   const momentumScrollEndHandler = (event) => {
-    onValueChange(flatListData[activeID].index, flatListData[activeID].text); /* index and value */
+    if (flatListData[activeID]) {
+      onValueChange(flatListData[activeID].index - halfSquareCount, flatListData[activeID].text); /* index and value */
+    }
 
     /* Uncomment to use expand/collapse feature. Incomplete */
     // setExpanded(false);
@@ -158,7 +166,6 @@ const TimePicker = ({
         inactiveTextColor={inactiveTextColor}
         flatListRef={flatListRef}
         setExpand={setExpanded}
-        scrollY={scrollY}
         isScrolling={isScrolling}
         dimension={squareDimension}
       />
@@ -193,7 +200,7 @@ const TimePicker = ({
               ref={flatListRef}
               data={flatListData} 
               renderItem={renderSquare} 
-              keyExtractor={(item) => item.index} 
+              keyExtractor={(item) => String(item.index)} 
               // decelerationRate={'fast'}
               snapToAlignment={'start'}
               snapToInterval={SQUARE_HEIGHT_WITH_MARGIN}
@@ -203,7 +210,7 @@ const TimePicker = ({
               onMomentumScrollEnd={momentumScrollEndHandler}
               onScroll={scrollHandler}
               scrollEventThrottle={16}
-              initialNumToRender={squareCount}
+              initialNumToRender={effectiveSquareCount}
               initialScrollIndex={initialSelectedIndex}
               extraData={activeID}
               showsVerticalScrollIndicator={false}
@@ -222,13 +229,15 @@ const TimePicker = ({
         <View style={[styles.square, 
           {backgroundColor: selectionColor, position: 'absolute'}]}>
         </View>
-        <Square style={{position: 'absolute'}}
-          item={flatListData[activeID + Math.floor(squareCount/2)]}
+        <Square
+          item={flatListData[activeID]}
           activeTextColor={activeTextColor}
           inactiveTextColor={inactiveTextColor}
           flatListRef={flatListRef}
           setExpand={setExpanded}
-          scrollY={scrollY}
+          onTouch={touchHandler}
+          isScrolling={false}
+          dimension={squareDimension}
         />
 
       </View>
@@ -251,6 +260,7 @@ const Square = ({
     onTouch,
     isScrolling = false,
     dimension,
+    style,
   }) => {
 
     const styles = StyleSheet.create({
@@ -295,15 +305,6 @@ const Square = ({
       </TouchableWithoutFeedback>
     );
   };
-  
-
-// <View style={[styles.square, {position: 'absolute'}]}>
-//         <Text style={[styles.text, {marginLeft: 20}]}> 69</Text>
-//       </View>
-
 
 
 export default TimePicker;
-
-
-

@@ -1,42 +1,44 @@
-import React, { useState, Component } from "react";
-import { StyleSheet, View, Dimensions, Text } from "react-native";
-import { fonts } from "../styles/fonts";
-import ToggleSwitch from "../components/core/ToggleSwitch";
+import React, { useState } from "react";
+import { StyleSheet, View, Text } from "react-native";
+
 import StartTimerBottomBar from "../components/compound/StartTimerBottomBar";
 import TimePicker from "../components/core/TimePicker";
 import { AppTitle } from '../components/core/AppTitle';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("screen");
-const HOUR_INDEX = 10;
-const MINUTE_INDEX = 20;
-const SECOND_INDEX = 30;
+
 
 const TimerNew = ({
   navigation,
   route
 }) => {  
   
-  const { onTimerStart, initialHour, initialMinute, initialSecond } = route.params;
+  const params = route.params || {};
+  const initialH = typeof params.initialHour === 'number' ? Math.min(Math.max(0, params.initialHour), 23) : 0;
+  const initialM = typeof params.initialMinute === 'number' ? Math.min(Math.max(0, params.initialMinute), 59) : 0;
+  const initialS = typeof params.initialSecond === 'number' ? Math.min(Math.max(0, params.initialSecond), 59) : 0;
 
   const listHours = new Array(24).fill(0).map((_, i) => String(i).padStart(2, '0'));
   const listMinutes = new Array(60).fill(0).map((_, i) => String(i).padStart(2, '0'));
   const listSeconds = new Array(60).fill(0).map((_, i) => String(i).padStart(2, '0'));
 
-  const [hour, setHour] = useState(parseInt(listHours[initialHour]));
-  const [minute, setMinute] = useState(parseInt(listMinutes[initialMinute]));
-  const [second, setSecond] = useState(parseInt(listSeconds[initialSecond]));
+  const [hour, setHour] = useState(initialH);
+  const [minute, setMinute] = useState(initialM);
+  const [second, setSecond] = useState(initialS);
 
   const handleHourChange = (index, value) => {
-    // console.log("[ HOUR ] index: " + index + ", data[index]: " + listHours[index] + ", value: " + value);
-    setHour(parseInt(listHours[index]));
+    if (index >= 0 && index < 24) {
+      setHour(index);
+    }
   }
   const handleMinuteChange = (index, value) => {
-    // console.log("[MINUTE] index: " + index + ", data[index]: " + listMinutes[index] + ", value: " + value);
-    setMinute(parseInt(listMinutes[index]));
+    if (index >= 0 && index < 60) {
+      setMinute(index);
+    }
   }
   const handleSecondChange = (index, value) => {
-    // console.log("[SECOND] index: " + index + ", data[index]: " + listSeconds[index] + ", value: " + value);
-    setSecond(parseInt(listSeconds[index]));
+    if (index >= 0 && index < 60) {
+      setSecond(index);
+    }
   }
 
   return (
@@ -50,7 +52,7 @@ const TimerNew = ({
         <TimePicker
           values={listHours}
           unit="h"
-          initialSelectedIndex={initialHour}
+          initialSelectedIndex={initialH}
           activeTextColor='white'
           squareCount={5}
           onValueChange={handleHourChange}
@@ -58,7 +60,7 @@ const TimerNew = ({
         <TimePicker
           values={listMinutes}
           unit="m"
-          initialSelectedIndex={initialMinute}
+          initialSelectedIndex={initialM}
           activeTextColor='white'
           squareCount={5}
           onValueChange={handleMinuteChange}
@@ -66,7 +68,7 @@ const TimerNew = ({
         <TimePicker
           values={listSeconds}
           unit="s"
-          initialSelectedIndex={initialSecond}
+          initialSelectedIndex={initialS}
           activeTextColor='white'
           squareCount={5}
           onValueChange={handleSecondChange}

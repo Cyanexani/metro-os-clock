@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import Animated, {
   interpolate,
   interpolateColor,
@@ -26,7 +26,6 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("screen");
  */
 const MetroTabs = ({
   screens, 
-  currentScreenIndex = 0,
   rightOverlapWidth = 20
 }) => {
   const SCREEN_SNAP_INTERVAL = SCREEN_WIDTH - rightOverlapWidth;
@@ -73,19 +72,10 @@ const MetroTabs = ({
   }, []);
 
   const setTabIndex = (index) => {
-    console.log("####### Tab index set: " + index);
     animatedRef.current
       ?.scrollTo({ animatedRef: animatedRef, x: index * SCREEN_SNAP_INTERVAL, animated: true });
   }
 
-  const renderItem = (item, index) => {
-    const ScreenComponent = item.screen;
-    return (
-      <View key={item.key}>
-        <ScreenComponent setTabIndex={setTabIndex} />
-      </View>
-    );
-  };
 
   return (
     <View style={styles.container}>

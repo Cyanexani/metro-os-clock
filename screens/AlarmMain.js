@@ -1,9 +1,9 @@
-import React, { useState, Component } from "react";
-import { StyleSheet, View, Text, FlatList, Image, Button } from "react-native";
+import React, { useState } from "react";
+import { StyleSheet, View, Text, FlatList } from "react-native";
 import { fonts } from "../styles/fonts";
 import ToggleSwitch from "../components/core/ToggleSwitch";
 import AddAlarmBottomBar from "../components/compound/AddAlarmBottomBar";
-import { TouchableOpacity } from "react-native-gesture-handler";
+
 
 
 const AlarmMain = ({

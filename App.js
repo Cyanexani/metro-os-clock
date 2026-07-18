@@ -1,4 +1,4 @@
-import { StyleSheet, Text, StatusBar, View } from 'react-native';
+import { StatusBar, View } from 'react-native';
 import MetroTabs from './components/core/MetroTabs';
 import TestScreen from './screens/TestScreen';
 import * as Font from 'expo-font';
@@ -24,17 +24,16 @@ export default function App() {
   }
   
   return (
-    <NavigationContainer><StatusBar />
-      <Stack.Navigator screenOptions={
-        {
-          headerShown: false
-        }
-      }>
-        <Stack.Screen name="ClockMain" component={ClockMain} />
-        <Stack.Screen name="TimerNew" component={TimerNew} />
-        {/* Add more screens here so we can navigate to them */}
-      </Stack.Navigator>
-    </NavigationContainer>
+    <View style={{ flex: 1, backgroundColor: 'black' }}>
+      <StatusBar barStyle="light-content" />
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="ClockMain" component={ClockMain} />
+          <Stack.Screen name="TimerNew" component={TimerNew} />
+          {/* Add more screens here so we can navigate to them */}
+        </Stack.Navigator>
+      </NavigationContainer>
+    </View>
   );
 }
 
@@ -49,7 +48,7 @@ export default function App() {
 // add them to Stack.screen above.
 const ClockMain = ({navigation, route}) => {
   return (
-    <View style={{backgroundColor: "black", }}>
+    <View style={{backgroundColor: "black", flex: 1}}>
       <AppTitle title={"clock"}></AppTitle>
       <MetroTabs
         rightOverlapWidth={0}

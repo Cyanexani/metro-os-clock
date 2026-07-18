@@ -9,7 +9,7 @@ export const TextBox = ({
     title="",
     placeholder="Enter URL"
 }) => {
-    if (title == "") {
+    if (title === "") {
         return (
             <TextInput 
                 className={`bg-[#c9c9c9] w-full h-10 px-4 text-base ${classOverrides}`}
