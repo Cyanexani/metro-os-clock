@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ScrollView, Text, TouchableWithoutFeedback, View } from "react-native";
+import { Pressable, ScrollView, Text, TouchableWithoutFeedback, View } from "react-native";
 import RoundedButton from "./RoundedButton";
 import { fonts } from "../../styles/fonts";
 
@@ -71,12 +71,12 @@ export const QuickMenu = ({
                 <View className="w-[70%] justify-center flex-row">
                     {options.map((option) => {
                         return (
-                            <TouchableWithoutFeedback key={option.text} onPress={option.onPress}>
+                            <Pressable key={option.text} onPress={option.onPress} hitSlop={12}>
                                 <View className="flex flex-col justify-between items-start mx-4 my-2 mb-3">
                                     <RoundedButton Icon={option.Icon} />
                                     {expanded && (<Text className="text-white text-sm" style={fonts.light}>{option.text}</Text>)}
                                 </View>
-                            </TouchableWithoutFeedback>
+                            </Pressable>
                         )
                     })}
                 </View>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { StyleSheet, View, Text, FlatList, Modal, TextInput, ScrollView, Vibration } from "react-native";
+import { StyleSheet, View, Text, FlatList, Modal, TextInput, ScrollView, Vibration, Pressable } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { Audio } from 'expo-av';
@@ -455,7 +455,7 @@ export default function AlarmMain({ navigation }) {
             {DAYS.map(day => {
               const active = draftRepeat.includes(day);
               return (
-                <MetroTouchable
+                <Pressable
                   key={day}
                   style={[modalStyles.dayChip, active && modalStyles.dayChipActive]}
                   onPress={() => toggleDraftDay(day)}
@@ -463,7 +463,7 @@ export default function AlarmMain({ navigation }) {
                   <Text style={[modalStyles.dayChipText, fonts.regular, active && modalStyles.dayChipTextActive]}>
                     {day.toLowerCase()}
                   </Text>
-                </MetroTouchable>
+                </Pressable>
               );
             })}
           </View>
@@ -473,7 +473,7 @@ export default function AlarmMain({ navigation }) {
             {RINGTONES.map((tone) => {
               const active = draftSound === tone.id;
               return (
-                <MetroTouchable
+                <Pressable
                   key={tone.id}
                   style={[modalStyles.dayChip, active && modalStyles.dayChipActive]}
                   onPress={() => setDraftSound(tone.id)}
@@ -481,7 +481,7 @@ export default function AlarmMain({ navigation }) {
                   <Text style={[modalStyles.dayChipText, fonts.regular, active && modalStyles.dayChipTextActive]}>
                     {tone.name.toLowerCase()}
                   </Text>
-                </MetroTouchable>
+                </Pressable>
               );
             })}
           </View>
