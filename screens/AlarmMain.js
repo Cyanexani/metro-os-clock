@@ -36,6 +36,7 @@ const migrateAlarm = (a) => {
     name: a.name || 'Alarm',
     repeat: a.repeat || [],
     sound: a.sound || DEFAULT_RINGTONE,
+    snooze: a.snooze !== false,
   };
 };
 
@@ -76,6 +77,7 @@ export default function AlarmMain({ navigation }) {
   const [draftName, setDraftName] = useState('Alarm');
   const [draftRepeat, setDraftRepeat] = useState([]);
   const [draftSound, setDraftSound] = useState(DEFAULT_RINGTONE);
+  const [draftSnooze, setDraftSnooze] = useState(true);
 
   // Which alarm+minute combos already rang, and the pending snooze target.
   const firedRef = useRef(new Set());
@@ -85,6 +87,7 @@ export default function AlarmMain({ navigation }) {
   const ringingRef = useRef(ringingAlarm);
   ringingRef.current = ringingAlarm;
   const soundRef = useRef(null);
+  const previewRef = useRef(null);
 
   // Configure audio so alarms play even when the phone is in silent mode.
   useEffect(() => {
@@ -107,6 +110,26 @@ export default function AlarmMain({ navigation }) {
       try { await soundRef.current.unloadAsync(); } catch (e) { }
       soundRef.current = null;
     }
+  };
+
+  const stopPreview = async () => {
+    if (previewRef.current) {
+      try { await previewRef.current.stopAsync(); } catch (e) { }
+      try { await previewRef.current.unloadAsync(); } catch (e) { }
+      previewRef.current = null;
+    }
+  };
+
+  const playPreview = async (soundId) => {
+    await stopPreview();
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        getRingtone(soundId).module,
+        { isLooping: false, volume: 1.0, shouldPlay: true },
+      );
+      previewRef.current = sound;
+      setTimeout(() => { stopPreview(); }, 3000);
+    } catch (e) {}
   };
 
   const playRingtone = async (soundId) => {
@@ -293,6 +316,7 @@ export default function AlarmMain({ navigation }) {
     setDraftName('Alarm');
     setDraftRepeat([]);
     setDraftSound(DEFAULT_RINGTONE);
+    setDraftSnooze(true);
     setEditorVisible(true);
   };
 
@@ -303,6 +327,7 @@ export default function AlarmMain({ navigation }) {
     setDraftName(alarm.name);
     setDraftRepeat(alarm.repeat);
     setDraftSound(alarm.sound || DEFAULT_RINGTONE);
+    setDraftSnooze(alarm.snooze !== false);
     setEditorVisible(true);
   };
 
@@ -314,12 +339,14 @@ export default function AlarmMain({ navigation }) {
       name: draftName.trim() || 'Alarm',
       repeat: draftRepeat,
       sound: draftSound,
+      snooze: draftSnooze,
     };
     if (editingId) {
       setAlarms(prev => prev.map(a => a.id === editingId ? { ...a, ...draft } : a));
     } else {
       setAlarms(prev => [...prev, { id: Date.now().toString(), ...draft }]);
     }
+    stopPreview();
     setEditorVisible(false);
   };
 
@@ -343,13 +370,19 @@ export default function AlarmMain({ navigation }) {
     stopRingtone();
     const alarm = ringingAlarm;
     if (alarm) {
-      const target = new Date(Date.now() + SNOOZE_MINUTES * 60 * 1000);
-      snoozeRef.current = { alarm, date: target, hour24: target.getHours(), minute: target.getMinutes() };
-      // Also ring if the app gets backgrounded during the snooze window.
-      Notifications.scheduleNotificationAsync({
-        content: { title: alarm.name, body: 'Snoozed alarm', sound: true, data: { alarmId: alarm.id } },
-        trigger: { channelId: 'alarms', date: target },
-      }).catch(() => { });
+      if (alarm.snooze !== false) {
+        const target = new Date(Date.now() + SNOOZE_MINUTES * 60 * 1000);
+        snoozeRef.current = { alarm, date: target, hour24: target.getHours(), minute: target.getMinutes() };
+        // Also ring if the app gets backgrounded during the snooze window.
+        Notifications.scheduleNotificationAsync({
+          content: { title: alarm.name, body: 'Snoozed alarm', sound: true, data: { alarmId: alarm.id } },
+          trigger: { channelId: 'alarms', date: target },
+        }).catch(() => { });
+      } else {
+        if (alarm.repeat.length === 0) {
+          setAlarms(prev => prev.map(a => a.id === alarm.id ? { ...a, enabled: false } : a));
+        }
+      }
     }
     setRingingAlarm(null);
   };
@@ -406,9 +439,12 @@ export default function AlarmMain({ navigation }) {
       {/* Add / Edit Alarm. Mounted only while open so the TimePickers pick up
           the current draft as their initial selection. */}
       {isEditorVisible && (
-      <Modal visible={isEditorVisible} animationType="slide" transparent={false} onRequestClose={() => setEditorVisible(false)}>
-        <ScrollView style={modalStyles.container} contentContainerStyle={modalStyles.content}>
-          <Text style={[modalStyles.title, fonts.regular]}>
+      <Modal visible={isEditorVisible} animationType="slide" transparent={true} onRequestClose={() => { stopPreview(); setEditorVisible(false); }}>
+        <View style={modalStyles.bottomSheetOuter}>
+          <View style={modalStyles.bottomSheetInner}>
+            <View style={modalStyles.dragIndicator} />
+            <ScrollView style={modalStyles.container} contentContainerStyle={modalStyles.content}>
+              <Text style={[modalStyles.title, fonts.regular]}>
             {editingId ? 'EDIT ALARM' : 'ADD AN ALARM'}
           </Text>
 
@@ -476,7 +512,7 @@ export default function AlarmMain({ navigation }) {
                 <Pressable
                   key={tone.id}
                   style={[modalStyles.dayChip, active && modalStyles.dayChipActive]}
-                  onPress={() => setDraftSound(tone.id)}
+                  onPress={() => { setDraftSound(tone.id); playPreview(tone.id); }}
                 >
                   <Text style={[modalStyles.dayChipText, fonts.regular, active && modalStyles.dayChipTextActive]}>
                     {tone.name.toLowerCase()}
@@ -486,15 +522,26 @@ export default function AlarmMain({ navigation }) {
             })}
           </View>
 
+          <View style={modalStyles.snoozeRow}>
+            <Text style={[modalStyles.fieldLabel, fonts.light, { marginBottom: 0 }]}>snooze</Text>
+            <ToggleSwitch
+              isOn={draftSnooze}
+              onToggle={() => setDraftSnooze(!draftSnooze)}
+              toggleOnColor={ACCENT}
+            />
+          </View>
+
           <View style={modalStyles.buttonRow}>
             <MetroTouchable style={modalStyles.actionButton} onPress={handleSave}>
               <Text style={[modalStyles.actionText, fonts.regular]}>save</Text>
             </MetroTouchable>
-            <MetroTouchable style={modalStyles.actionButton} onPress={() => setEditorVisible(false)}>
+            <MetroTouchable style={modalStyles.actionButton} onPress={() => { stopPreview(); setEditorVisible(false); }}>
               <Text style={[modalStyles.actionText, fonts.regular]}>cancel</Text>
             </MetroTouchable>
           </View>
-        </ScrollView>
+            </ScrollView>
+          </View>
+        </View>
       </Modal>
       )}
 
@@ -549,8 +596,11 @@ const itemStyles = StyleSheet.create({
 });
 
 const modalStyles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: 'black' },
-  content: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 40 },
+  bottomSheetOuter: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
+  bottomSheetInner: { backgroundColor: '#111', borderTopLeftRadius: 0, borderTopRightRadius: 0, maxHeight: '85%' },
+  dragIndicator: { width: 40, height: 2, backgroundColor: '#444', alignSelf: 'center', marginTop: 10 },
+  container: { backgroundColor: 'transparent' },
+  content: { paddingTop: 20, paddingHorizontal: 20, paddingBottom: 40 },
   title: { color: 'white', fontSize: 18, letterSpacing: 2, marginBottom: 20 },
   pickerRow: { flexDirection: 'row', justifyContent: 'center', marginBottom: 20 },
   fieldLabel: { color: '#888', fontSize: 16, marginBottom: 5 },
@@ -561,6 +611,7 @@ const modalStyles = StyleSheet.create({
   dayChipActive: { backgroundColor: ACCENT, borderColor: ACCENT },
   dayChipText: { color: '#888', fontSize: 14 },
   dayChipTextActive: { color: 'white' },
+  snoozeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 40 },
   buttonRow: { flexDirection: 'row', justifyContent: 'space-between' },
   actionButton: { flex: 1, alignItems: 'center', padding: 16, marginHorizontal: 5, backgroundColor: '#222' },
   actionText: { color: 'white', fontSize: 18 },

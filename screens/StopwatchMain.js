@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { StyleSheet, View, Text, ScrollView } from "react-native";
-import Button from "../components/core/Button";
+import { StyleSheet, View, Text, ScrollView, Pressable } from "react-native";
 import { fonts } from "../styles/fonts";
 
 // Elapsed time is anchored to wall-clock timestamps so pause/resume never
@@ -11,11 +10,17 @@ const formatElapsed = (ms) => {
   const totalSec = Math.floor(totalCs / 100);
   const sec = totalSec % 60;
   const totalMin = Math.floor(totalSec / 60);
-  const min = totalMin % 60;
-  const hrs = Math.floor(totalMin / 60);
   const pad = (n, w = 2) => String(n).padStart(w, "0");
+  
+  if (totalMin >= 60) {
+    const hrs = Math.floor(totalMin / 60);
+    return {
+      main: `${pad(hrs)}:${pad(totalMin % 60)}:${pad(sec)}`,
+      cs: pad(cs),
+    };
+  }
   return {
-    main: hrs > 0 ? `${pad(hrs)}:${pad(min)}:${pad(sec)}` : `${pad(min)}:${pad(sec)}`,
+    main: `${pad(totalMin)}:${pad(sec)}`,
     cs: pad(cs),
   };
 };
@@ -53,7 +58,10 @@ const StopwatchMain = () => {
 
   const handleResetOrLap = () => {
     if (running) {
-      setLaps((prev) => [{ id: prev.length + 1, total: elapsed }, ...prev]);
+      setLaps((prev) => {
+        const split = prev.length > 0 ? elapsed - prev[0].total : elapsed;
+        return [{ id: prev.length + 1, total: elapsed, split }, ...prev];
+      });
     } else {
       accumulatedRef.current = 0;
       setElapsed(0);
@@ -62,13 +70,17 @@ const StopwatchMain = () => {
   };
 
   const { main, cs } = formatElapsed(elapsed);
+  
+  const lapSplits = laps.map(l => l.split);
+  const minSplit = laps.length >= 2 ? Math.min(...lapSplits) : -1;
+  const maxSplit = laps.length >= 2 ? Math.max(...lapSplits) : -1;
 
   return (
     <View style={styles.container}>
       <View style={styles.displayContainer}>
         <View style={styles.timeRow}>
           <Text style={[styles.mainText, fonts.extraLight]}>{main}</Text>
-          <Text style={[styles.csText, fonts.regular]}>.{cs}</Text>
+          <Text style={[styles.csText, fonts.extraLight]}>.{cs}</Text>
         </View>
       </View>
 
@@ -79,33 +91,58 @@ const StopwatchMain = () => {
         overScrollMode="never"
         showsVerticalScrollIndicator={false}
       >
-        {laps.map((lap, i) => {
-          const prev = laps[i + 1];
-          const split = prev ? lap.total - prev.total : lap.total;
-          const lapFmt = formatElapsed(split);
-          const totFmt = formatElapsed(lap.total);
+        {laps.map((lap) => {
+          const lapFmt = formatElapsed(lap.split);
+          let rowColor = "white";
+          let labelColor = "#888888";
+          
+          if (laps.length >= 2) {
+            if (lap.split === minSplit) {
+              rowColor = "#0078D7"; // accent color for fastest
+              labelColor = "#0078D7";
+            } else if (lap.split === maxSplit) {
+              rowColor = "#CC4400"; // red/orange for slowest
+              labelColor = "#CC4400";
+            }
+          }
+
           return (
             <View key={lap.id} style={styles.lapRow}>
-              <Text style={[styles.lapIndex, fonts.regular]}>{String(lap.id).padStart(2, "0")}</Text>
-              <Text style={[styles.lapSplit, fonts.light]}>{lapFmt.main}.{lapFmt.cs}</Text>
-              <Text style={[styles.lapTotal, fonts.light]}>{totFmt.main}.{totFmt.cs}</Text>
+              <Text style={[styles.lapIndex, fonts.regular, { color: labelColor }]}>
+                lap {lap.id}
+              </Text>
+              <Text style={[styles.lapSplit, fonts.regular, { color: rowColor }]}>
+                {lapFmt.main}.{lapFmt.cs}
+              </Text>
             </View>
           );
         })}
       </ScrollView>
 
-      <View style={styles.buttonContainer}>
-        <Button
-          text={running ? "lap" : "reset"}
+      <View style={styles.appBar}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.appBarButton,
+            { opacity: (!running && elapsed === 0) ? 0.3 : (pressed ? 0.5 : 1) }
+          ]}
           onPress={handleResetOrLap}
           disabled={!running && elapsed === 0}
-          classOverride="flex-grow"
-        />
-        <Button
-          text={running ? "stop" : "start"}
+        >
+          <Text style={[styles.appBarButtonText, fonts.regular]}>
+            {running ? "lap" : "reset"}
+          </Text>
+        </Pressable>
+        <Pressable
+          style={({ pressed }) => [
+            styles.appBarButton,
+            { opacity: pressed ? 0.5 : 1 }
+          ]}
           onPress={handleStartStop}
-          classOverride="flex-grow"
-        />
+        >
+          <Text style={[styles.appBarButtonText, fonts.regular]}>
+            {running ? "stop" : "start"}
+          </Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -113,24 +150,35 @@ const StopwatchMain = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "black", width: "100%" },
-  displayContainer: { marginTop: "30%", alignItems: "center" },
+  displayContainer: { marginTop: "20%", alignItems: "center", marginBottom: 20 },
   timeRow: { flexDirection: "row", alignItems: "baseline" },
-  mainText: { fontSize: 84, color: "white", includeFontPadding: false },
-  csText: { fontSize: 32, color: "#888", marginLeft: 4 },
-  lapsContainer: { flex: 1, marginTop: 20, marginHorizontal: 20 },
-  lapsContent: { paddingBottom: 120 },
-  lapRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#222" },
-  lapIndex: { color: "#0078D7", fontSize: 16, width: 40 },
-  lapSplit: { color: "white", fontSize: 16, flex: 1, textAlign: "center" },
-  lapTotal: { color: "#888", fontSize: 16, width: 90, textAlign: "right" },
-  buttonContainer: {
-    position: "absolute",
-    bottom: 90,
-    width: "100%",
+  mainText: { fontSize: 72, color: "white", includeFontPadding: false },
+  csText: { fontSize: 72, color: "white", includeFontPadding: false },
+  lapsContainer: { flex: 1, marginHorizontal: 24 },
+  lapsContent: { paddingBottom: 80 },
+  lapRow: { 
+    flexDirection: "row", 
+    justifyContent: "space-between", 
+    paddingVertical: 12,
+  },
+  lapIndex: { fontSize: 14 },
+  lapSplit: { fontSize: 16 },
+  appBar: {
+    height: 64,
+    backgroundColor: "#111111",
     flexDirection: "row",
-    justifyContent: "center",
+    alignItems: "center",
+    justifyContent: "space-around",
+  },
+  appBarButton: {
     paddingHorizontal: 20,
-    gap: 10,
+    paddingVertical: 10,
+    minWidth: 80,
+    alignItems: "center",
+  },
+  appBarButtonText: {
+    color: "white",
+    fontSize: 14,
   },
 });
 

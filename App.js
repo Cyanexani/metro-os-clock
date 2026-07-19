@@ -57,7 +57,7 @@ export default function App() {
 const ClockMain = ({navigation, route}) => {
   return (
     <View style={{backgroundColor: "black", flex: 1}}>
-      <AppTitle title={"clock"}></AppTitle>
+
       <MetroTabs
         rightOverlapWidth={0}
         screens={[

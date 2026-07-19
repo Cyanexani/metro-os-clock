@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { StyleSheet, View, Dimensions, Text, Vibration, ScrollView } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
+import Svg, { Circle } from 'react-native-svg';
 import Button from "../components/core/Button";
 import { fonts } from "../styles/fonts";
 import MetroTouchable from "../components/core/MetroTouchable";
@@ -173,28 +174,49 @@ const TimerMain = ({
   }
 
 
+  const totalSec = (selectedHour*3600) + (selectedMinute*60) + selectedSecond;
+  const circleRadius = 120;
+  const circleCircumference = 2 * Math.PI * circleRadius;
+  const progress = totalSec > 0 ? (currentSec / totalSec) : 1;
+  const strokeDashoffset = circleCircumference - (progress * circleCircumference);
+
   return (
     <View style={styles.container}>
 
       <View style={styles.timerItemContainer}>
-        <View style={styles.numberContainer}>
-          <Text style={styles.timerText}>
-            {String(Math.floor((currentSec / (60*60)) % 24)).padStart(2, '0')}
-          </Text>
-          <Text style={styles.timerText}>
-            :
-          </Text>
+        <View style={styles.ringContainer}>
+          <Svg width={260} height={260} viewBox="0 0 260 260">
+            <Circle
+              cx="130"
+              cy="130"
+              r={circleRadius}
+              stroke="#0078D7"
+              strokeWidth="6"
+              fill="none"
+              strokeDasharray={circleCircumference}
+              strokeDashoffset={strokeDashoffset}
+              transform="rotate(-90 130 130)"
+            />
+          </Svg>
+          <View style={styles.numberContainerAbsolute}>
+            <Text style={[styles.timerText, fonts.light]}>
+              {String(Math.floor((currentSec / (60*60)) % 24)).padStart(2, '0')}
+            </Text>
+            <Text style={[styles.timerText, fonts.light, { paddingBottom: 6 }]}>
+              :
+            </Text>
 
-          <Text style={styles.timerText}>
-            {String(Math.floor((currentSec / (60)) % 60)).padStart(2, '0')}
-          </Text>
-          <Text style={styles.timerText}>
-            :
-          </Text>
+            <Text style={[styles.timerText, fonts.light]}>
+              {String(Math.floor((currentSec / (60)) % 60)).padStart(2, '0')}
+            </Text>
+            <Text style={[styles.timerText, fonts.light, { paddingBottom: 6 }]}>
+              :
+            </Text>
 
-          <Text style={styles.timerText}>
-            {String(Math.floor(currentSec % 60)).padStart(2, '0')}
-          </Text>
+            <Text style={[styles.timerText, fonts.light]}>
+              {String(Math.floor(currentSec % 60)).padStart(2, '0')}
+            </Text>
+          </View>
         </View>
         <View style={styles.buttonContainer}>
           <Button text={"reset"} onPress={handleReset} classOverride="flex-grow" ></Button>
@@ -283,9 +305,18 @@ const styles = StyleSheet.create({
       alignItems: 'center',
       gap: 20,
     },
-    numberContainer: {
+    ringContainer: {
+      justifyContent: 'center',
+      alignItems: 'center',
+      width: 260,
+      height: 260,
+      marginTop: 20,
+    },
+    numberContainerAbsolute: {
+      position: 'absolute',
       flexDirection: 'row',
       justifyContent: 'center',
+      alignItems: 'center',
       gap: 2,
     },
     buttonContainer: {
@@ -299,7 +330,7 @@ const styles = StyleSheet.create({
       gap: 10,
     },
     timerText: {
-      fontSize: 80,
+      fontSize: 64,
       color: "white",
       // fontWeight: "bold",
 

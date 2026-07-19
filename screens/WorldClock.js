@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TextInput, FlatList, Modal } from 'react-native';
-import * as Battery from 'expo-battery';
+import { View, Text, StyleSheet, ScrollView, TextInput, FlatList, Modal } from 'react-native';
 import { Plus } from 'react-native-feather';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fonts } from '../styles/fonts';
@@ -10,8 +9,6 @@ import { CITY_DATABASE } from '../data/cities';
 const STORAGE_KEY = '@world_clock_cities';
 const ACCENT = '#0078D7';
 
-// Intl.DateTimeFormat construction is expensive; build each formatter once
-// per timezone and reuse it on every tick.
 const timeFormatters = new Map();
 const dateFormatters = new Map();
 
@@ -24,7 +21,6 @@ const getTimeFormatter = (tz) => {
   return timeFormatters.get(tz);
 };
 
-// en-CA gives YYYY-MM-DD, which compares lexicographically as a date.
 const getDateFormatter = (tz) => {
   const key = tz || 'local';
   if (!dateFormatters.has(key)) {
@@ -35,10 +31,35 @@ const getDateFormatter = (tz) => {
   return dateFormatters.get(key);
 };
 
+const getOffsetDiffStr = (date, tz) => {
+  if (!tz) return 'same time';
+  const getParts = (t) => {
+    const dtf = new Intl.DateTimeFormat('en-US', {
+      timeZone: t, year: 'numeric', month: 'numeric', day: 'numeric',
+      hour: 'numeric', minute: 'numeric', hour12: false
+    });
+    const parts = dtf.formatToParts(date);
+    const map = {};
+    parts.forEach(p => map[p.type] = p.value);
+    return map;
+  };
+  try {
+    const target = getParts(tz);
+    const local = getParts(undefined);
+    const tDate = Date.UTC(target.year, target.month - 1, target.day, target.hour, target.minute);
+    const lDate = Date.UTC(local.year, local.month - 1, local.day, local.hour, local.minute);
+    let diff = (tDate - lDate) / 3600000;
+    
+    if (Math.abs(diff) < 0.05) return 'same time';
+    const sign = diff > 0 ? '+' : '';
+    return `${sign}${diff}h`;
+  } catch (e) {
+    return '';
+  }
+};
+
 const getFormattedTimeForTz = (date, tz) => {
   try {
-    // formatToParts instead of splitting the formatted string: modern ICU
-    // separates time and dayPeriod with U+202F, not a plain space.
     const parts = getTimeFormatter(tz).formatToParts(date);
     let timeText = '';
     let ampm = '';
@@ -47,30 +68,28 @@ const getFormattedTimeForTz = (date, tz) => {
         if (part.type === 'literal' && part.value.trim() === '') continue;
         timeText += part.value;
       } else if (part.type === 'dayPeriod') {
-        ampm = part.value;
+        ampm = part.value.toLowerCase();
       }
     }
 
     const targetDate = getDateFormatter(tz).format(date);
     const localDate = getDateFormatter(null).format(date);
-    let dayText = 'Today';
-    if (targetDate > localDate) dayText = 'Tomorrow';
-    else if (targetDate < localDate) dayText = 'Yesterday';
+    let dayText = '';
+    if (targetDate > localDate) dayText = 'tomorrow';
+    else if (targetDate < localDate) dayText = 'yesterday';
 
-    return { time: timeText, ampm, dayText };
+    const offsetText = getOffsetDiffStr(date, tz);
+
+    return { time: timeText, ampm, dayText, offsetText };
   } catch (e) {
-    return { time: '--:--', ampm: '', dayText: '' };
+    return { time: '--:--', ampm: '', dayText: '', offsetText: '' };
   }
 };
 
 export default function WorldClock() {
   const [time, setTime] = useState(new Date());
-  const [batteryLevel, setBatteryLevel] = useState(null);
-
   const [myCities, setMyCities] = useState([]);
   const [hasLoaded, setHasLoaded] = useState(false);
-  const [selectedCityId, setSelectedCityId] = useState(null);
-
   const [isModalVisible, setModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -111,21 +130,6 @@ export default function WorldClock() {
     return () => clearInterval(interval);
   }, []);
 
-  // Battery — everything guarded: the native module may be missing in builds
-  // prebuilt before expo-battery was added.
-  useEffect(() => {
-    let sub = null;
-    const initBattery = async () => {
-      try {
-        const level = await Battery.getBatteryLevelAsync();
-        setBatteryLevel(level);
-        sub = Battery.addBatteryLevelListener(({ batteryLevel }) => setBatteryLevel(batteryLevel));
-      } catch (e) { }
-    };
-    initBattery();
-    return () => { if (sub) sub.remove(); };
-  }, []);
-
   const handleAddCity = (city) => {
     if (!myCities.find(c => c.id === city.id)) {
       setMyCities([...myCities, city]);
@@ -134,11 +138,8 @@ export default function WorldClock() {
     setModalVisible(false);
   };
 
-  const handleRemoveSelected = () => {
-    if (selectedCityId && myCities.length > 1) {
-      setMyCities(myCities.filter(c => c.id !== selectedCityId));
-      setSelectedCityId(null);
-    }
+  const handleRemoveCity = (id) => {
+    setMyCities(myCities.filter(c => c.id !== id));
   };
 
   const filteredSearch = (searchQuery.trim() === ''
@@ -146,40 +147,19 @@ export default function WorldClock() {
     : CITY_DATABASE.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
   ).slice(0, 100);
 
+  const localTzInfo = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const localCityName = localTzInfo ? localTzInfo.split('/').pop().replace(/_/g, ' ').toLowerCase() : 'local time';
+  const { time: localTimeText, ampm: localAmpm } = getFormattedTimeForTz(time, null);
+
   return (
     <View style={styles.container}>
-      {/* Map Area */}
-      <View style={styles.mapContainer}>
-        <Image
-          source={require('../assets/world-map.png')}
-          style={styles.mapImage}
-          resizeMode="contain"
-        />
-
-        {/* Map Dots */}
-        {myCities.map((city, index) => {
-          const isPrimary = index === 0;
-          const isSelected = selectedCityId === city.id;
-          const isHighlighted = isSelected || (isPrimary && !selectedCityId);
-
-          return (
-            <View
-              key={`dot-${city.id}`}
-              style={[
-                styles.mapDot,
-                { left: `${city.x}%`, top: `${city.y}%` },
-                isHighlighted && styles.mapDotHighlighted,
-              ]}
-            />
-          );
-        })}
-
-        {/* Battery */}
-        {batteryLevel !== null && (
-          <View style={styles.batteryBadge}>
-            <Text style={[styles.batteryText, fonts.regular]}>{Math.round(batteryLevel * 100)}%</Text>
-          </View>
-        )}
+      {/* Local Time Header */}
+      <View style={styles.localTimeContainer}>
+        <View style={styles.timeRow}>
+          <Text style={[styles.localTime, fonts.extraLight]}>{localTimeText}</Text>
+          <Text style={[styles.localAmpm, fonts.regular]}>{localAmpm}</Text>
+        </View>
+        <Text style={[styles.localCityName, fonts.regular]}>{localCityName}</Text>
       </View>
 
       {/* Cities List */}
@@ -190,40 +170,26 @@ export default function WorldClock() {
         overScrollMode="never"
         showsVerticalScrollIndicator={false}
       >
-        {myCities.map((city, index) => {
-          const { time: cTime, ampm: cAmpm, dayText: cDay } = getFormattedTimeForTz(time, city.tz);
-          const isPrimary = index === 0;
-          const isSelected = selectedCityId === city.id;
-
-          if (isPrimary) {
-            return (
-              <MetroTouchable
-                key={city.id}
-                style={styles.primaryCityBlock}
-                onPress={() => setSelectedCityId(isSelected ? null : city.id)}
-              >
-                <View style={styles.timeRow}>
-                  <Text style={[styles.primaryTime, fonts.extraLight]}>{cTime}</Text>
-                  <Text style={[styles.primaryAmpm, fonts.regular]}>{cAmpm}</Text>
-                </View>
-                <Text style={[styles.primaryCityName, fonts.regular]}>{city.name}</Text>
-                <Text style={[styles.dayText, fonts.regular]}>{cDay}</Text>
-              </MetroTouchable>
-            );
-          }
+        {myCities.map((city) => {
+          const { time: cTime, ampm: cAmpm, dayText: cDay, offsetText } = getFormattedTimeForTz(time, city.tz);
 
           return (
             <MetroTouchable
               key={city.id}
-              style={[styles.secondaryCityBlock, isSelected && styles.selectedBlock]}
-              onPress={() => setSelectedCityId(isSelected ? null : city.id)}
+              style={styles.cityRow}
+              onLongPress={() => handleRemoveCity(city.id)}
             >
-              <View style={styles.timeRow}>
-                <Text style={[styles.secondaryTime, fonts.extraLight]}>{cTime}</Text>
-                <Text style={[styles.secondaryAmpm, fonts.regular]}>{cAmpm}</Text>
+              <View style={styles.cityRowLeft}>
+                <View style={styles.timeRow}>
+                  <Text style={[styles.cityTime, fonts.extraLight]}>{cTime}</Text>
+                  <Text style={[styles.cityAmpm, fonts.regular]}>{cAmpm}</Text>
+                </View>
+                <Text style={[styles.cityName, fonts.regular]}>{city.name.toLowerCase()}</Text>
+                {cDay ? <Text style={[styles.cityDay, fonts.regular]}>{cDay}</Text> : null}
               </View>
-              <Text style={[isSelected ? styles.secondaryCityNameSelected : styles.secondaryCityName, fonts.regular]}>{city.name}</Text>
-              <Text style={[isSelected ? styles.dayTextSelected : styles.dayText, fonts.regular]}>{cDay}</Text>
+              <View style={styles.cityRowRight}>
+                <Text style={[styles.offsetText, fonts.regular]}>{offsetText}</Text>
+              </View>
             </MetroTouchable>
           );
         })}
@@ -231,24 +197,17 @@ export default function WorldClock() {
 
       {/* Bottom App Bar */}
       <View style={styles.appBar}>
-        {selectedCityId && myCities[0] && selectedCityId !== myCities[0].id ? (
-          <MetroTouchable style={styles.fab} onPress={handleRemoveSelected}>
-            <Text style={styles.fabMinus}>-</Text>
-          </MetroTouchable>
-        ) : (
-          <MetroTouchable style={styles.fab} onPress={() => setModalVisible(true)}>
-            <Plus stroke="white" width={24} height={24} />
-          </MetroTouchable>
-        )}
+        <MetroTouchable style={styles.fab} onPress={() => setModalVisible(true)}>
+          <Plus stroke="white" width={24} height={24} />
+        </MetroTouchable>
       </View>
 
       {/* Add Location Modal */}
       <Modal visible={isModalVisible} animationType="slide" transparent={false} onRequestClose={() => setModalVisible(false)}>
         <View style={styles.modalContainer}>
-          <Text style={[styles.modalTitle, fonts.regular]}>ADD A LOCATION</Text>
           <TextInput
             style={[styles.searchInput, fonts.regular]}
-            placeholder="Search..."
+            placeholder="search..."
             placeholderTextColor="#888"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -259,14 +218,14 @@ export default function WorldClock() {
             keyExtractor={item => item.id}
             renderItem={({ item }) => (
               <MetroTouchable style={styles.searchResultItem} onPress={() => handleAddCity(item)}>
-                <Text style={[styles.searchResultText, fonts.regular]}>{item.name}</Text>
+                <Text style={[styles.searchResultText, fonts.regular]}>{item.name.toLowerCase()}</Text>
               </MetroTouchable>
             )}
             style={styles.searchResultsList}
           />
           <View style={styles.appBar}>
             <MetroTouchable style={styles.fab} onPress={() => setModalVisible(false)}>
-              <Text style={styles.fabClose}>X</Text>
+              <Text style={styles.fabClose}>x</Text>
             </MetroTouchable>
           </View>
         </View>
@@ -277,39 +236,33 @@ export default function WorldClock() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: 'black' },
-  mapContainer: { height: 220, width: '100%', backgroundColor: 'black', position: 'relative', justifyContent: 'center', alignItems: 'center' },
-  mapImage: { width: '100%', height: '100%', opacity: 0.6, tintColor: '#444' },
+  
+  localTimeContainer: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 25 },
+  timeRow: { flexDirection: 'row', alignItems: 'baseline' },
+  localTime: { color: 'white', fontSize: 80, includeFontPadding: false },
+  localAmpm: { color: 'white', fontSize: 24, marginLeft: 8 },
+  localCityName: { color: ACCENT, fontSize: 18, marginTop: -5 },
 
-  mapDot: { position: 'absolute', width: 6, height: 6, borderRadius: 3, backgroundColor: 'white', opacity: 0.8 },
-  mapDotHighlighted: { width: 8, height: 8, borderRadius: 4, backgroundColor: ACCENT, opacity: 1 },
-
-  batteryBadge: { position: 'absolute', top: 0, right: 20, paddingHorizontal: 6, paddingVertical: 2 },
-  batteryText: { color: '#555', fontSize: 12 },
   listContainer: { flex: 1 },
   listContent: { paddingBottom: 20 },
-  timeRow: { flexDirection: 'row', alignItems: 'baseline' },
-  primaryCityBlock: { paddingHorizontal: 20, paddingVertical: 5, marginBottom: 20 },
-  primaryTime: { color: 'white', fontSize: 84, includeFontPadding: false },
-  primaryAmpm: { color: 'white', fontSize: 24, marginLeft: 8 },
-  primaryCityName: { color: ACCENT, fontSize: 18, marginTop: -5 },
-  dayText: { color: '#888', fontSize: 14 },
-  dayTextSelected: { color: '#ccc', fontSize: 14 },
-  secondaryCityBlock: { paddingHorizontal: 20, paddingVertical: 12 },
-  selectedBlock: { backgroundColor: '#004A87' },
-  secondaryTime: { color: 'white', fontSize: 42, includeFontPadding: false },
-  secondaryAmpm: { color: 'white', fontSize: 18, marginLeft: 6 },
-  secondaryCityName: { color: '#ccc', fontSize: 16 },
-  secondaryCityNameSelected: { color: 'white', fontSize: 16 },
+  
+  cityRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 15 },
+  cityRowLeft: { flex: 1 },
+  cityRowRight: { justifyContent: 'flex-start', alignItems: 'flex-end', paddingTop: 10 },
+  
+  cityTime: { color: 'white', fontSize: 48, includeFontPadding: false },
+  cityAmpm: { color: 'white', fontSize: 18, marginLeft: 6 },
+  cityName: { color: 'white', fontSize: 16, marginTop: -2 },
+  cityDay: { color: '#888', fontSize: 14, marginTop: 2 },
+  offsetText: { color: ACCENT, fontSize: 14 },
+  
   appBar: { height: 65, backgroundColor: 'black', flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
   fab: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: 'white', justifyContent: 'center', alignItems: 'center' },
-  fabMinus: { color: 'white', fontSize: 24, marginTop: -4 },
-  fabClose: { color: 'white', fontSize: 14 },
+  fabClose: { color: 'white', fontSize: 20, marginBottom: 2 },
 
-  // Modal styles
   modalContainer: { flex: 1, backgroundColor: 'black', paddingTop: 40 },
-  modalTitle: { color: 'white', fontSize: 16, paddingHorizontal: 20, marginBottom: 10 },
-  searchInput: { backgroundColor: 'white', color: 'black', fontSize: 20, marginHorizontal: 20, padding: 10, borderRadius: 2 },
-  searchResultsList: { backgroundColor: 'white', marginHorizontal: 20, marginTop: 2, flex: 1, marginBottom: 20 },
-  searchResultItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  searchResultText: { color: 'black', fontSize: 18 },
+  searchInput: { backgroundColor: 'white', color: 'black', fontSize: 20, marginHorizontal: 20, padding: 12, borderRadius: 0, marginBottom: 10 },
+  searchResultsList: { backgroundColor: 'black', marginHorizontal: 20, flex: 1, marginBottom: 20 },
+  searchResultItem: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#333' },
+  searchResultText: { color: 'white', fontSize: 18 },
 });

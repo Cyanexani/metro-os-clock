@@ -7,7 +7,7 @@ import Animated, {
   useAnimatedRef,
   useAnimatedScrollHandler,
 } from "react-native-reanimated";
-import { View, StyleSheet, Dimensions, TouchableOpacity } from "react-native";
+import { View, StyleSheet, Dimensions, TouchableOpacity, Text } from "react-native";
 import { fonts } from "../../styles/fonts";
 
 
@@ -79,6 +79,7 @@ const MetroTabs = ({
 
   return (
     <View style={styles.container}>
+      <Text style={styles.appTitle}>alarms & clock</Text>
       <Animated.View
         style={[
           styles.tabContainer, 
@@ -141,8 +142,8 @@ const MetroTabs = ({
   );
 };
 
-const activeColor = "#ffffff";
-const inactiveColor = "#333333";
+const activeColor = "rgba(255, 255, 255, 1)";
+const inactiveColor = "rgba(255, 255, 255, 0.4)";
 
 const HeaderItem = ({ item, index, maxLen, scrollViewX, onPress, onLayout, screenSnapInterval }) => {
 
@@ -170,7 +171,7 @@ const HeaderItem = ({ item, index, maxLen, scrollViewX, onPress, onLayout, scree
       <Animated.Text style={[
         styles.tabText,
         animatedHeaderColorStyle,
-        fonts.regular
+        fonts.light
       ]}>
         {item.title}
       </Animated.Text>
@@ -180,8 +181,16 @@ const HeaderItem = ({ item, index, maxLen, scrollViewX, onPress, onLayout, scree
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: 0, //120
+    paddingTop: 0,
     backgroundColor: "black",
+  },
+  appTitle: {
+    color: 'white',
+    fontFamily: 'openSansLight',
+    fontSize: 34,
+    paddingLeft: 20,
+    paddingTop: 10,
+    textTransform: 'lowercase',
   },
   screenContainer: {
     height: SCREEN_HEIGHT - 170, // account for container padding top (120 original)
@@ -191,13 +200,13 @@ const styles = StyleSheet.create({
   },
   tabContainer: {
     flexDirection: "row",
-    backgroundColor: "black",
+    backgroundColor: "transparent",
     paddingTop: 4,
     paddingBottom: 4,
   },
   tabText: {
     paddingRight: 10,
-    paddingLeft: 10,
+    paddingLeft: 20,
     fontSize: 50,
   },
 });
