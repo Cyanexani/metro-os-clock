@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, FlatList, Modal, Pressable } from 'react-native';
-import { Plus } from 'react-native-feather';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fonts } from '../styles/fonts';
 import { useSettings } from '../context/SettingsContext';
 import MetroTouchable from '../components/core/MetroTouchable';
 import WorldMap from '../components/compound/WorldMap';
 import AnimatedCityRow from '../components/compound/AnimatedCityRow';
-import AnimatedTime from '../components/compound/AnimatedTime';
+import WorldClockHeader from '../components/compound/WorldClockHeader';
+import WorldClockAppBar from '../components/compound/WorldClockAppBar';
 import useMapZoom, { MAP_DISPLAY_H } from '../components/compound/useMapZoom';
 import { CITY_DATABASE } from '../data/cities';
 
 const STORAGE_KEY = '@world_clock_cities';
-const ACCENT = '#0078D7';
 
 const timeFormatters = new Map();
 const dateFormatters = new Map();
@@ -100,7 +99,7 @@ const getFormattedTimeForTz = (date, tz, use24Hour, showSeconds) => {
   }
 };
 
-export default function WorldClock() {
+export default function WorldClock({ navigation }) {
   const { settings } = useSettings();
   const { mapAnimatedStyle, selectCity, deselect, selectedId } = useMapZoom();
   const [time, setTime] = useState(new Date());
@@ -166,8 +165,15 @@ export default function WorldClock() {
     : CITY_DATABASE.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
   ).slice(0, 100);
 
+  // Match the local city to the database so its header label is formatted
+  // identically to the rows below (Title Case "City, Region, Country"). Fall
+  // back to prettifying the IANA zone if the exact zone isn't in the database.
   const localTzInfo = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const localCityName = localTzInfo ? localTzInfo.split('/').pop().replace(/_/g, ' ').toLowerCase() : 'local time';
+  const localDbCity = localTzInfo ? CITY_DATABASE.find(c => c.tz === localTzInfo) : null;
+  const prettifyZone = (tz) => tz
+    ? tz.split('/').pop().replace(/_/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase())
+    : 'Local time';
+  const localCityName = localDbCity ? localDbCity.name : prettifyZone(localTzInfo);
   const { time: localTimeText, ampm: localAmpm } = getFormattedTimeForTz(time, null, settings.use24Hour, settings.showSeconds);
 
   return (
@@ -184,13 +190,12 @@ export default function WorldClock() {
       </Pressable>
 
       {/* Local Time Header */}
-      <View style={styles.localTimeContainer}>
-        <View style={styles.timeRow}>
-          <AnimatedTime value={localTimeText} style={[styles.localTime, fonts.extraLight]} />
-          <Text style={[styles.localAmpm, fonts.regular]}>{localAmpm}</Text>
-        </View>
-        <Text style={[styles.localCityName, fonts.regular]}>{localCityName}</Text>
-      </View>
+      <WorldClockHeader
+        timeText={localTimeText}
+        ampm={localAmpm}
+        cityName={localCityName}
+        dayText="Today"
+      />
 
       {/* Cities List */}
       <ScrollView
@@ -220,11 +225,11 @@ export default function WorldClock() {
       </ScrollView>
 
       {/* Bottom App Bar */}
-      <View style={styles.appBar}>
-        <MetroTouchable style={styles.fab} onPress={() => setModalVisible(true)}>
-          <Plus stroke="white" width={24} height={24} />
-        </MetroTouchable>
-      </View>
+      <WorldClockAppBar
+        onAdd={() => setModalVisible(true)}
+        onOpenSettings={() => navigation && navigation.navigate('Settings')}
+        onReorder={() => {}}
+      />
 
       {/* Add Location Modal */}
       <Modal visible={isModalVisible} animationType="slide" transparent={false} onRequestClose={() => setModalVisible(false)}>
@@ -262,12 +267,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: 'black' },
 
   mapContainer: { width: '100%', height: MAP_DISPLAY_H, backgroundColor: '#060D1A' },
-
-  localTimeContainer: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
-  timeRow: { flexDirection: 'row', alignItems: 'baseline' },
-  localTime: { color: 'white', fontSize: 64, includeFontPadding: false },
-  localAmpm: { color: 'white', fontSize: 22, marginLeft: 8 },
-  localCityName: { color: ACCENT, fontSize: 18, marginTop: -5 },
 
   listContainer: { flex: 1 },
   listContent: { paddingBottom: 20 },

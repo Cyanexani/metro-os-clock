@@ -1,8 +1,7 @@
 import React, { useMemo } from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Image, StyleSheet } from 'react-native';
 import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 import Animated from 'react-native-reanimated';
-import { fonts } from '../../styles/fonts';
 import worldMap from '../../assets/world-map.png';
 import { lonToX, latToY } from '../../data/cities';
 
@@ -94,9 +93,9 @@ const WorldMap = ({
         <Path d={terminatorPath} fill="url(#nightFade)" />
       </Svg>
 
-      {/* City pins + labels, absolutely positioned by projected percentage.
-          The wrapper is a zero-size point at the coordinate; the dot is
-          centred on it and the label floats above without shifting the dot. */}
+      {/* City pins, absolutely positioned by projected percentage. The real WP
+          world clock map shows glowing dots only — no text labels. The wrapper
+          is a zero-size point at the coordinate; the dot is centred on it. */}
       {cities.map((city) => {
         const active = city.id === selectedId;
         return (
@@ -105,14 +104,6 @@ const WorldMap = ({
             pointerEvents="none"
             style={[styles.pinWrap, { left: `${city.x}%`, top: `${city.y}%` }]}
           >
-            <View style={styles.labelWrap}>
-              <Text
-                numberOfLines={1}
-                style={[styles.pinLabel, fonts.light, active && styles.pinLabelActive]}
-              >
-                {city.name.split(',')[0].toLowerCase()}
-              </Text>
-            </View>
             <View style={[styles.pinDot, active && styles.pinDotActive]} />
           </View>
         );
@@ -133,22 +124,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  labelWrap: {
-    position: 'absolute',
-    bottom: 6,
-    alignItems: 'center',
-    width: 120,
-    marginLeft: -60,
-  },
-  pinLabel: {
-    color: 'white',
-    fontSize: 9,
-    textAlign: 'center',
-    textShadowColor: 'rgba(0,0,0,0.9)',
-    textShadowRadius: 3,
-    opacity: 0.9,
-  },
-  pinLabelActive: { opacity: 1, fontSize: 10 },
   pinDot: {
     position: 'absolute',
     width: 8,

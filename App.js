@@ -13,6 +13,7 @@ import SettingsScreen from './screens/SettingsScreen';
 import { SettingsProvider } from './context/SettingsContext';
 import RingtoneScreen from './screens/RingtoneScreen';
 import BatteryOptPrompt from './components/compound/BatteryOptPrompt';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const Stack = createNativeStackNavigator();
 
@@ -29,6 +30,7 @@ export default function App() {
   }
 
   return (
+    <SafeAreaProvider>
     <SettingsProvider>
     <View style={{ flex: 1, backgroundColor: 'black' }}>
       <StatusBar barStyle="light-content" backgroundColor="black" translucent={false} />
@@ -44,6 +46,7 @@ export default function App() {
       <BatteryOptPrompt />
     </View>
     </SettingsProvider>
+    </SafeAreaProvider>
   );
 }
 

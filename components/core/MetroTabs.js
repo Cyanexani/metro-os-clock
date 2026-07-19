@@ -8,6 +8,7 @@ import Animated, {
   useAnimatedScrollHandler,
 } from "react-native-reanimated";
 import { View, StyleSheet, Dimensions, TouchableOpacity, Text } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { fonts } from "../../styles/fonts";
 
 
@@ -25,9 +26,10 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("screen");
  * @param {Array} props.screens
  */
 const MetroTabs = ({
-  screens, 
+  screens,
   rightOverlapWidth = 20
 }) => {
+  const insets = useSafeAreaInsets();
   const SCREEN_SNAP_INTERVAL = SCREEN_WIDTH - rightOverlapWidth;
   // console.log(screens);
   const screenCnt = screens.length;
@@ -123,9 +125,9 @@ const MetroTabs = ({
         
         {/* Adding setTabIndex prop to screens so children can change tabs */}
         {screens.map((item) => (
-          <View 
-            key={item.key} 
-            style={[ styles.screenContainer, {width: SCREEN_SNAP_INTERVAL} ]}>
+          <View
+            key={item.key}
+            style={[ styles.screenContainer, {width: SCREEN_SNAP_INTERVAL, height: SCREEN_HEIGHT - 170 - insets.bottom} ]}>
               {React.cloneElement(item.screen, { setTabIndex })}
           </View>
         ))}
