@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
-import { StyleSheet, View, Text, ScrollView, Pressable } from "react-native";
+import { StyleSheet, View, Text, ScrollView, Pressable, AppState } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fonts } from "../styles/fonts";
 
 // Elapsed time is anchored to wall-clock timestamps so pause/resume never
@@ -33,6 +34,41 @@ const StopwatchMain = () => {
   const accumulatedRef = useRef(0);
   const startStampRef = useRef(0);
   const timerRef = useRef(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const loadState = async () => {
+      try {
+        const saved = await AsyncStorage.getItem("@metro_stopwatch");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          accumulatedRef.current = parsed.accumulated;
+          startStampRef.current = parsed.startStamp;
+          setLaps(parsed.laps || []);
+          setElapsed(parsed.running ? parsed.accumulated + (Date.now() - parsed.startStamp) : parsed.accumulated);
+          setRunning(parsed.running);
+        }
+      } catch (e) {}
+      setLoaded(true);
+    };
+    loadState();
+  }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+    const saveState = async () => {
+      try {
+        const state = {
+          accumulated: accumulatedRef.current,
+          startStamp: startStampRef.current,
+          running,
+          laps
+        };
+        await AsyncStorage.setItem("@metro_stopwatch", JSON.stringify(state));
+      } catch (e) {}
+    };
+    saveState();
+  }, [running, elapsed, laps, loaded]);
 
   useEffect(() => {
     if (running) {
