@@ -17,6 +17,9 @@ const Stack = createNativeStackNavigator();
 
 export default function App() {
   const [fontsLoaded] = Font.useFonts({
+    'selawikLight': require('./assets/fonts/selawkl.ttf'),
+    'selawikRegular': require('./assets/fonts/selawk.ttf'),
+    'selawikSemiLight': require('./assets/fonts/selawksl.ttf'),
     'notoSansLight': require('./assets/fonts/NotoSans-Light.ttf'),
     'notoSansRegular': require('./assets/fonts/NotoSans-Regular.ttf'),
     'notoSansExtraLight': require('./assets/fonts/NotoSans-ExtraLight.ttf'),
