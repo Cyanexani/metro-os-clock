@@ -1,7 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
-import { StyleSheet, View, Dimensions, Text } from "react-native";
+import { StyleSheet, View, Dimensions, Text, Vibration, ScrollView } from "react-native";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Button from "../components/core/Button";
+import { fonts } from "../styles/fonts";
+import MetroTouchable from "../components/core/MetroTouchable";
+import MetroTile from "../components/core/MetroTile";
 import NewTimerBottomBar from "../components/compound/NewTimerBottomBar";
+
+const SAVED_KEY = '@metro_saved_timers';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("screen");
 
@@ -37,6 +43,55 @@ const TimerMain = ({
   
   const [currentSec, setCurrentSec] = useState(0);
   const [delay, setDelay] = useState(null);
+  const [finished, setFinished] = useState(false);
+  const [savedTimers, setSavedTimers] = useState([]);
+  const [savedLoaded, setSavedLoaded] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(SAVED_KEY);
+        if (raw !== null) setSavedTimers(JSON.parse(raw));
+      } catch (e) { }
+      setSavedLoaded(true);
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (savedLoaded) AsyncStorage.setItem(SAVED_KEY, JSON.stringify(savedTimers)).catch(() => { });
+  }, [savedTimers, savedLoaded]);
+
+  // A newly created timer arriving from TimerNew is remembered as a preset.
+  useEffect(() => {
+    const t = route.params?.timer;
+    if (!t) return;
+    const total = t.selectedHour * 3600 + t.selectedMinute * 60 + t.selectedSecond;
+    if (total <= 0) return;
+    setSavedTimers((prev) => {
+      if (prev.some((p) => p.total === total)) return prev;
+      return [...prev, { id: `${total}`, h: t.selectedHour, m: t.selectedMinute, s: t.selectedSecond, total }];
+    });
+  }, [route.params?.timer]);
+
+  const labelFor = (h, m, s) => {
+    const parts = [];
+    if (h) parts.push(`${h}h`);
+    if (m) parts.push(`${m}m`);
+    if (s) parts.push(`${s}s`);
+    return parts.join(' ') || '0s';
+  };
+
+  const loadPreset = (preset) => {
+    setDelay(null);
+    setFinished(false);
+    Vibration.cancel();
+    setSelectedHour(preset.h);
+    setSelectedMinute(preset.m);
+    setSelectedSecond(preset.s);
+    setCurrentSec(preset.total);
+  };
+
+  const removePreset = (id) => setSavedTimers((prev) => prev.filter((p) => p.id !== id));
 
 
 
@@ -57,10 +112,12 @@ const TimerMain = ({
   useInterval(() => {
 
     setCurrentSec((currentMsec) => {
-      if (currentMsec > 0) {
+      if (currentMsec > 1) {
         return (currentMsec-1);
       } else {
         setDelay(null);
+        setFinished(true);
+        Vibration.vibrate([500, 1000, 500, 1000], true);
         return 0;
       }
 
@@ -69,12 +126,21 @@ const TimerMain = ({
 
   const handleReset = () => {
     setDelay(null); // Stop timer
+    setFinished(false);
+    Vibration.cancel();
     const sec = (selectedHour*3600) + (selectedMinute*60) + selectedSecond;
     setCurrentSec(sec);
     console.log("Reset!");
   }
   const handleStartStop = () => {
     setDelay(prevDelay => prevDelay ? null : 1000); // Start or stop timer
+  }
+
+  const dismissFinished = () => {
+    Vibration.cancel();
+    setFinished(false);
+    const sec = (selectedHour*3600) + (selectedMinute*60) + selectedSecond;
+    setCurrentSec(sec);
   }
 
 
@@ -108,6 +174,29 @@ const TimerMain = ({
         </View>
 
       </View>
+
+      {/* Saved timer presets as Metro tiles */}
+      {savedTimers.length > 0 && (
+        <View style={styles.savedContainer}>
+          <Text style={[styles.savedHeading, fonts.light]}>saved</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.savedRow}
+          >
+            {savedTimers.map((preset) => (
+              <MetroTile
+                key={preset.id}
+                size="small"
+                color="#0078D7"
+                label={labelFor(preset.h, preset.m, preset.s)}
+                onPress={() => loadPreset(preset)}
+                onLongPress={() => removePreset(preset.id)}
+              />
+            ))}
+          </ScrollView>
+        </View>
+      )}
       
       {/* Bottom bar */}
       <View style={styles.bottomBarContainer}>
@@ -125,6 +214,17 @@ const TimerMain = ({
           }
         }></NewTimerBottomBar>
       </View>
+
+      {/* Time's up overlay */}
+      {finished && (
+        <View style={styles.finishedOverlay}>
+          <Text style={[styles.finishedLabel, fonts.regular]}>TIMER</Text>
+          <Text style={[styles.finishedText, fonts.extraLight]}>time's up</Text>
+          <MetroTouchable style={styles.finishedButton} onPress={dismissFinished}>
+            <Text style={[styles.finishedButtonText, fonts.regular]}>dismiss</Text>
+          </MetroTouchable>
+        </View>
+      )}
 
     </View>
   );
@@ -174,7 +274,23 @@ const styles = StyleSheet.create({
       color: "white",
       // fontWeight: "bold",
 
-    }
+    },
+    finishedOverlay: {
+      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+      backgroundColor: '#004A87', justifyContent: 'center', alignItems: 'center', zIndex: 100,
+    },
+    finishedLabel: { color: 'white', fontSize: 24, letterSpacing: 2, marginBottom: 10 },
+    finishedText: { color: 'white', fontSize: 72, includeFontPadding: false, marginBottom: 50 },
+    finishedButton: { borderColor: 'white', borderWidth: 2, paddingHorizontal: 30, paddingVertical: 12 },
+    finishedButtonText: { color: 'white', fontSize: 18 },
+    savedContainer: {
+      position: 'absolute',
+      bottom: 160,
+      width: '100%',
+      paddingLeft: 15,
+    },
+    savedHeading: { color: '#888', fontSize: 14, marginLeft: 5, marginBottom: 6 },
+    savedRow: { paddingRight: 15 },
   });
 
 

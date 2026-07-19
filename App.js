@@ -7,7 +7,10 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AlarmMain from './screens/AlarmMain';
 import TimerMain from './screens/TimerMain';
+import StopwatchMain from './screens/StopwatchMain';
 import TimerNew from './screens/TimerNew';
+import SettingsScreen from './screens/SettingsScreen';
+import { SettingsProvider } from './context/SettingsContext';
 
 const Stack = createNativeStackNavigator();
 
@@ -16,24 +19,29 @@ export default function App() {
     'notoSansLight': require('./assets/fonts/NotoSans-Light.ttf'),
     'notoSansRegular': require('./assets/fonts/NotoSans-Regular.ttf'),
     'notoSansExtraLight': require('./assets/fonts/NotoSans-ExtraLight.ttf'),
+    'openSansLight': require('./assets/fonts/OpenSans-Light.ttf'),
+    'openSansRegular': require('./assets/fonts/OpenSans-Regular.ttf'),
   });
 
   if (!fontsLoaded) {
     // Return a loading component or null while fonts are loading
     return null;
   }
-  
+
   return (
+    <SettingsProvider>
     <View style={{ flex: 1, backgroundColor: 'black' }}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="light-content" backgroundColor="black" translucent={false} />
       <NavigationContainer>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="ClockMain" component={ClockMain} />
           <Stack.Screen name="TimerNew" component={TimerNew} />
+          <Stack.Screen name="Settings" component={SettingsScreen} />
           {/* Add more screens here so we can navigate to them */}
         </Stack.Navigator>
       </NavigationContainer>
     </View>
+    </SettingsProvider>
   );
 }
 
@@ -55,7 +63,8 @@ const ClockMain = ({navigation, route}) => {
         screens={[
           { key: "0", title: "alarm", screen: <AlarmMain navigation={navigation} route={route}/> },
           { key: "1", title: "timer", screen: <TimerMain navigation={navigation} route={route}/> },
-          { key: "2", title: "world clock", screen: <WorldClock navigation={navigation} route={route}/> },
+          { key: "2", title: "stopwatch", screen: <StopwatchMain navigation={navigation} route={route}/> },
+          { key: "3", title: "world clock", screen: <WorldClock navigation={navigation} route={route}/> },
         ]}
       />
     </View>

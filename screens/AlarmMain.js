@@ -2,11 +2,13 @@ import React, { useState, useEffect, useRef } from "react";
 import { StyleSheet, View, Text, FlatList, Modal, TextInput, ScrollView, Vibration } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
+import { Audio } from 'expo-av';
 import { fonts } from "../styles/fonts";
 import ToggleSwitch from "../components/core/ToggleSwitch";
 import MetroTouchable from "../components/core/MetroTouchable";
 import TimePicker from "../components/core/TimePicker";
 import AddAlarmBottomBar from "../components/compound/AddAlarmBottomBar";
+import { RINGTONES, DEFAULT_RINGTONE, getRingtone } from "../data/ringtones";
 
 const STORAGE_KEY = '@metro_alarms';
 const ACCENT = '#0078D7';
@@ -20,7 +22,7 @@ const SNOOZE_MINUTES = 5;
 // string formatting. Older builds stored { time: '08:00', ampm: 'AM', state }.
 const migrateAlarm = (a) => {
   if (typeof a.hour24 === 'number' && typeof a.minute === 'number') {
-    return { repeat: [], ...a };
+    return { repeat: [], sound: DEFAULT_RINGTONE, ...a };
   }
   const match = typeof a.time === 'string' && a.time.match(/^(\d{1,2}):(\d{1,2})$/);
   if (!match) return null;
@@ -33,6 +35,7 @@ const migrateAlarm = (a) => {
     enabled: a.state !== false,
     name: a.name || 'Alarm',
     repeat: a.repeat || [],
+    sound: a.sound || DEFAULT_RINGTONE,
   };
 };
 
@@ -72,6 +75,7 @@ export default function AlarmMain({ navigation }) {
   const [draftMinute, setDraftMinute] = useState(0);
   const [draftName, setDraftName] = useState('Alarm');
   const [draftRepeat, setDraftRepeat] = useState([]);
+  const [draftSound, setDraftSound] = useState(DEFAULT_RINGTONE);
 
   // Which alarm+minute combos already rang, and the pending snooze target.
   const firedRef = useRef(new Set());
@@ -80,6 +84,50 @@ export default function AlarmMain({ navigation }) {
   alarmsRef.current = alarms;
   const ringingRef = useRef(ringingAlarm);
   ringingRef.current = ringingAlarm;
+  const soundRef = useRef(null);
+
+  // Configure audio so alarms play even when the phone is in silent mode.
+  useEffect(() => {
+    Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: false,
+      shouldDuckAndroid: false,
+    }).catch(() => { });
+    return () => {
+      if (soundRef.current) {
+        soundRef.current.unloadAsync().catch(() => { });
+        soundRef.current = null;
+      }
+    };
+  }, []);
+
+  const stopRingtone = async () => {
+    if (soundRef.current) {
+      try { await soundRef.current.stopAsync(); } catch (e) { }
+      try { await soundRef.current.unloadAsync(); } catch (e) { }
+      soundRef.current = null;
+    }
+  };
+
+  const playRingtone = async (soundId) => {
+    try {
+      await stopRingtone();
+      const { sound } = await Audio.Sound.createAsync(
+        getRingtone(soundId).module,
+        { isLooping: true, volume: 1.0, shouldPlay: true },
+      );
+      soundRef.current = sound;
+    } catch (e) { }
+  };
+
+  // Play/stop the looping ringtone alongside the ringing overlay.
+  useEffect(() => {
+    if (ringingAlarm) {
+      playRingtone(ringingAlarm.sound);
+    } else {
+      stopRingtone();
+    }
+  }, [ringingAlarm]);
 
   useEffect(() => {
     const loadAlarms = async () => {
@@ -244,6 +292,7 @@ export default function AlarmMain({ navigation }) {
     setDraftMinute(0);
     setDraftName('Alarm');
     setDraftRepeat([]);
+    setDraftSound(DEFAULT_RINGTONE);
     setEditorVisible(true);
   };
 
@@ -253,6 +302,7 @@ export default function AlarmMain({ navigation }) {
     setDraftMinute(alarm.minute);
     setDraftName(alarm.name);
     setDraftRepeat(alarm.repeat);
+    setDraftSound(alarm.sound || DEFAULT_RINGTONE);
     setEditorVisible(true);
   };
 
@@ -263,6 +313,7 @@ export default function AlarmMain({ navigation }) {
       enabled: true,
       name: draftName.trim() || 'Alarm',
       repeat: draftRepeat,
+      sound: draftSound,
     };
     if (editingId) {
       setAlarms(prev => prev.map(a => a.id === editingId ? { ...a, ...draft } : a));
@@ -278,6 +329,7 @@ export default function AlarmMain({ navigation }) {
 
   const dismissAlarm = () => {
     Vibration.cancel();
+    stopRingtone();
     const alarm = ringingAlarm;
     if (alarm && alarm.repeat.length === 0) {
       // One-time alarms turn off once they've rung; repeating ones stay armed.
@@ -288,6 +340,7 @@ export default function AlarmMain({ navigation }) {
 
   const snoozeAlarm = () => {
     Vibration.cancel();
+    stopRingtone();
     const alarm = ringingAlarm;
     if (alarm) {
       const target = new Date(Date.now() + SNOOZE_MINUTES * 60 * 1000);
@@ -349,7 +402,7 @@ export default function AlarmMain({ navigation }) {
         }
       />
       <View style={styles.bottomBarContainer}>
-        <AddAlarmBottomBar navigation={navigation} methods={{ addAlarm: openAdd }} />
+        <AddAlarmBottomBar navigation={navigation} methods={{ addAlarm: openAdd, deleteAll: () => setAlarms([]) }} />
       </View>
 
       {/* Add / Edit Alarm. Mounted only while open so the TimePickers pick up
@@ -411,6 +464,24 @@ export default function AlarmMain({ navigation }) {
                 >
                   <Text style={[modalStyles.dayChipText, fonts.regular, active && modalStyles.dayChipTextActive]}>
                     {day.toLowerCase()}
+                  </Text>
+                </MetroTouchable>
+              );
+            })}
+          </View>
+
+          <Text style={[modalStyles.fieldLabel, fonts.light]}>sound</Text>
+          <View style={modalStyles.soundRow}>
+            {RINGTONES.map((tone) => {
+              const active = draftSound === tone.id;
+              return (
+                <MetroTouchable
+                  key={tone.id}
+                  style={[modalStyles.dayChip, active && modalStyles.dayChipActive]}
+                  onPress={() => setDraftSound(tone.id)}
+                >
+                  <Text style={[modalStyles.dayChipText, fonts.regular, active && modalStyles.dayChipTextActive]}>
+                    {tone.name.toLowerCase()}
                   </Text>
                 </MetroTouchable>
               );
@@ -487,6 +558,7 @@ const modalStyles = StyleSheet.create({
   fieldLabel: { color: '#888', fontSize: 16, marginBottom: 5 },
   nameInput: { color: 'white', fontSize: 24, borderBottomWidth: 2, borderBottomColor: '#333', paddingVertical: 8, marginBottom: 30 },
   dayRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 40 },
+  soundRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 40 },
   dayChip: { borderWidth: 2, borderColor: '#333', paddingHorizontal: 10, paddingVertical: 8, marginRight: 8, marginBottom: 8 },
   dayChipActive: { backgroundColor: ACCENT, borderColor: ACCENT },
   dayChipText: { color: '#888', fontSize: 14 },

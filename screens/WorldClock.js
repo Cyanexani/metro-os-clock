@@ -5,25 +5,10 @@ import { Plus } from 'react-native-feather';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fonts } from '../styles/fonts';
 import MetroTouchable from '../components/core/MetroTouchable';
+import { CITY_DATABASE } from '../data/cities';
 
 const STORAGE_KEY = '@world_clock_cities';
 const ACCENT = '#0078D7';
-
-// Hardcoded city database for the search and map plotting
-const CITY_DATABASE = [
-  { id: 'seattle', name: 'Seattle, WA, USA', tz: 'America/Los_Angeles', x: 18, y: 30 },
-  { id: 'london', name: 'London, United Kingdom', tz: 'Europe/London', x: 48, y: 28 },
-  { id: 'sydney', name: 'Sydney, NSW, Australia', tz: 'Australia/Sydney', x: 87, y: 75 },
-  { id: 'vaduz', name: 'Vaduz, Liechtenstein', tz: 'Europe/Vaduz', x: 51, y: 30 },
-  { id: 'valencia', name: 'Valencia, Spain', tz: 'Europe/Madrid', x: 48, y: 35 },
-  { id: 'vancouver', name: 'Vancouver, BC, Canada', tz: 'America/Vancouver', x: 17, y: 25 },
-  { id: 'vatican', name: 'Vatican City, Vatican City', tz: 'Europe/Vatican', x: 51, y: 36 },
-  { id: 'tokyo', name: 'Tokyo, Japan', tz: 'Asia/Tokyo', x: 85, y: 38 },
-  { id: 'newyork', name: 'New York, NY, USA', tz: 'America/New_York', x: 28, y: 35 },
-  { id: 'paris', name: 'Paris, France', tz: 'Europe/Paris', x: 49, y: 31 },
-  { id: 'delhi', name: 'New Delhi, India', tz: 'Asia/Kolkata', x: 70, y: 45 },
-  { id: 'dubai', name: 'Dubai, UAE', tz: 'Asia/Dubai', x: 63, y: 46 },
-];
 
 // Intl.DateTimeFormat construction is expensive; build each formatter once
 // per timezone and reuse it on every tick.
@@ -97,7 +82,12 @@ export default function WorldClock() {
         if (saved !== null) {
           setMyCities(JSON.parse(saved));
         } else {
-          setMyCities([CITY_DATABASE[0], CITY_DATABASE[1], CITY_DATABASE[2]]);
+          const pick = (id) => CITY_DATABASE.find(c => c.id === id);
+          setMyCities([
+            pick('seattle-wa-usa'),
+            pick('london-united-kingdom'),
+            pick('tokyo-japan'),
+          ].filter(Boolean));
         }
       } catch (e) { }
       setHasLoaded(true);
@@ -151,9 +141,10 @@ export default function WorldClock() {
     }
   };
 
-  const filteredSearch = CITY_DATABASE.filter(c =>
-    c.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredSearch = (searchQuery.trim() === ''
+    ? CITY_DATABASE
+    : CITY_DATABASE.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
+  ).slice(0, 100);
 
   return (
     <View style={styles.container}>
@@ -192,7 +183,13 @@ export default function WorldClock() {
       </View>
 
       {/* Cities List */}
-      <ScrollView style={styles.listContainer}>
+      <ScrollView
+        style={styles.listContainer}
+        contentContainerStyle={styles.listContent}
+        bounces={false}
+        overScrollMode="never"
+        showsVerticalScrollIndicator={false}
+      >
         {myCities.map((city, index) => {
           const { time: cTime, ampm: cAmpm, dayText: cDay } = getFormattedTimeForTz(time, city.tz);
           const isPrimary = index === 0;
@@ -289,6 +286,7 @@ const styles = StyleSheet.create({
   batteryBadge: { position: 'absolute', top: 0, right: 20, paddingHorizontal: 6, paddingVertical: 2 },
   batteryText: { color: '#555', fontSize: 12 },
   listContainer: { flex: 1 },
+  listContent: { paddingBottom: 20 },
   timeRow: { flexDirection: 'row', alignItems: 'baseline' },
   primaryCityBlock: { paddingHorizontal: 20, paddingVertical: 5, marginBottom: 20 },
   primaryTime: { color: 'white', fontSize: 84, includeFontPadding: false },

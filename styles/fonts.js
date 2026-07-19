@@ -2,12 +2,12 @@ import { StyleSheet } from "react-native";
 
 export const fonts = StyleSheet.create({
     regular: {
-        fontFamily: 'notoSansRegular'
+        fontFamily: 'openSansRegular'
     },
     light: {
-        fontFamily: 'notoSansLight'
+        fontFamily: 'openSansLight'
     },
     extraLight: {
-        fontFamily: 'notoSansExtraLight'
+        fontFamily: 'openSansLight'
     },
 })
