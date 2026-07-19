@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, TouchableWithoutFeedback, StyleSheet, FlatList }  from "react-native";
+import { View, Text, TouchableWithoutFeedback, StyleSheet, FlatList, Vibration }  from "react-native";
 import { LinearGradient } from 'expo-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
 
@@ -122,6 +122,7 @@ const TimePicker = ({
     const centerID = topID + halfSquareCount;
     if (centerID !== activeID && centerID >= halfSquareCount && centerID < halfSquareCount + values.length)
     {
+      Vibration.vibrate(10);
       setFlatListData(prevData => {
         const newData = [...prevData];
         if (newData[activeID]) {
@@ -201,7 +202,7 @@ const TimePicker = ({
               data={flatListData} 
               renderItem={renderSquare} 
               keyExtractor={(item) => String(item.index)} 
-              // decelerationRate={'fast'}
+              decelerationRate={'fast'}
               snapToAlignment={'start'}
               snapToInterval={SQUARE_HEIGHT_WITH_MARGIN}
               contentContainerStyle={styles.flatList}

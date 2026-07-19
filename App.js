@@ -11,6 +11,7 @@ import StopwatchMain from './screens/StopwatchMain';
 import TimerNew from './screens/TimerNew';
 import SettingsScreen from './screens/SettingsScreen';
 import { SettingsProvider } from './context/SettingsContext';
+import RingtoneScreen from './screens/RingtoneScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -37,6 +38,7 @@ export default function App() {
           <Stack.Screen name="ClockMain" component={ClockMain} />
           <Stack.Screen name="TimerNew" component={TimerNew} />
           <Stack.Screen name="Settings" component={SettingsScreen} />
+          <Stack.Screen name="RingtoneScreen" component={RingtoneScreen} options={{ headerShown: false }} />
           {/* Add more screens here so we can navigate to them */}
         </Stack.Navigator>
       </NavigationContainer>

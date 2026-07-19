@@ -41,22 +41,17 @@ const MetroTabs = ({
     scrollViewX.value = event.contentOffset.x;
   });
 
-  const animatedHeaderTransformStyle = useAnimatedStyle(() => {
-    // does the actual parallax interpolation
-    const headerX = interpolate(
-      scrollViewX.value, 
-      new Array(screenCnt+1)
-        .fill(0)
-        .map((_, i) => SCREEN_SNAP_INTERVAL * i),
-      // max parallax translate for the header
-      // negative because the header is translated to the left
-      headerItemsWidthArray.value,
-    ); 
-
+  const animatedTitleTransformStyle = useAnimatedStyle(() => {
     return {
-      transform: [{ translateX: headerX }]
-    }
-  })
+      transform: [{ translateX: -(scrollViewX.value * 0.25) }]
+    };
+  });
+
+  const animatedHeaderTransformStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: -(scrollViewX.value * 0.6) }]
+    };
+  });
 
   // scrolls to the correct screen when one of the tabs are pressed
   const onTabPress = useCallback(async (index) => {
@@ -79,7 +74,7 @@ const MetroTabs = ({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.appTitle}>alarms & clock</Text>
+      <Animated.Text style={[styles.appTitle, animatedTitleTransformStyle]}>alarms & clock</Animated.Text>
       <Animated.View
         style={[
           styles.tabContainer, 

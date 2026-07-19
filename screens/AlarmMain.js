@@ -9,6 +9,7 @@ import MetroTouchable from "../components/core/MetroTouchable";
 import TimePicker from "../components/core/TimePicker";
 import AddAlarmBottomBar from "../components/compound/AddAlarmBottomBar";
 import { RINGTONES, DEFAULT_RINGTONE, getRingtone } from "../data/ringtones";
+import RingtoneScreen from "./RingtoneScreen";
 
 const STORAGE_KEY = '@metro_alarms';
 const ACCENT = '#0078D7';
@@ -71,6 +72,7 @@ export default function AlarmMain({ navigation }) {
 
   // Editor state (add + edit share the modal)
   const [isEditorVisible, setEditorVisible] = useState(false);
+  const [showRingtoneSheet, setShowRingtoneSheet] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [draftHour24, setDraftHour24] = useState(8);
   const [draftMinute, setDraftMinute] = useState(0);
@@ -504,23 +506,15 @@ export default function AlarmMain({ navigation }) {
             })}
           </View>
 
-          <Text style={[modalStyles.fieldLabel, fonts.light]}>sound</Text>
-          <View style={modalStyles.soundRow}>
-            {RINGTONES.map((tone) => {
-              const active = draftSound === tone.id;
-              return (
-                <Pressable
-                  key={tone.id}
-                  style={[modalStyles.dayChip, active && modalStyles.dayChipActive]}
-                  onPress={() => { setDraftSound(tone.id); playPreview(tone.id); }}
-                >
-                  <Text style={[modalStyles.dayChipText, fonts.regular, active && modalStyles.dayChipTextActive]}>
-                    {tone.name.toLowerCase()}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          <Pressable style={modalStyles.soundPickerRow} onPress={() => setShowRingtoneSheet(true)}>
+            <Text style={[modalStyles.fieldLabel, fonts.light, { marginBottom: 0 }]}>sound</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={[fonts.regular, { color: '#888', fontSize: 16, marginRight: 10 }]}>
+                {getRingtone(draftSound)?.name.toLowerCase()}
+              </Text>
+              <Text style={[fonts.regular, { color: '#888', fontSize: 20 }]}>›</Text>
+            </View>
+          </Pressable>
 
           <View style={modalStyles.snoozeRow}>
             <Text style={[modalStyles.fieldLabel, fonts.light, { marginBottom: 0 }]}>snooze</Text>
@@ -543,6 +537,16 @@ export default function AlarmMain({ navigation }) {
           </View>
         </View>
       </Modal>
+      )}
+
+      {showRingtoneSheet && (
+        <Modal visible={showRingtoneSheet} animationType="slide" onRequestClose={() => setShowRingtoneSheet(false)}>
+          <RingtoneScreen 
+            currentSound={draftSound} 
+            onSelect={setDraftSound} 
+            onClose={() => setShowRingtoneSheet(false)} 
+          />
+        </Modal>
       )}
 
       {/* Ringing overlay */}
@@ -606,7 +610,7 @@ const modalStyles = StyleSheet.create({
   fieldLabel: { color: '#888', fontSize: 16, marginBottom: 5 },
   nameInput: { color: 'white', fontSize: 24, borderBottomWidth: 2, borderBottomColor: '#333', paddingVertical: 8, marginBottom: 30 },
   dayRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 40 },
-  soundRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 40 },
+  soundPickerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 40 },
   dayChip: { borderWidth: 2, borderColor: '#333', paddingHorizontal: 10, paddingVertical: 8, marginRight: 8, marginBottom: 8 },
   dayChipActive: { backgroundColor: ACCENT, borderColor: ACCENT },
   dayChipText: { color: '#888', fontSize: 14 },
