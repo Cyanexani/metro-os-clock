@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
   },
   appTitle: {
     color: 'white',
-    fontFamily: 'openSansLight',
+    fontFamily: 'notoSansLight',
     fontSize: 34,
     paddingLeft: 20,
     paddingTop: 10,
