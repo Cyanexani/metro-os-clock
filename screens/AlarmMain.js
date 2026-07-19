@@ -361,33 +361,31 @@ export default function AlarmMain({ navigation }) {
   const setDraftAmpm = (index) => setDraftHour24((draftHour24 % 12) + (index === 1 ? 12 : 0));
 
   const renderItem = ({ item }) => (
-    <MetroTouchable
-      style={styles.itemContainer}
-      onPress={() => openEdit(item)}
-      onLongPress={() => deleteAlarm(item.id)}
-    >
-      <View style={styles.itemRow}>
-        <View style={itemStyles.infoContainer}>
-          <Text style={[itemStyles.time, fonts.extraLight, !item.enabled && itemStyles.dimmed]}>
-            {formatTime(item.hour24, item.minute)}
-            <Text style={itemStyles.ampm}> {item.hour24 >= 12 ? 'PM' : 'AM'}</Text>
-          </Text>
-          <Text style={[itemStyles.name, fonts.regular, !item.enabled && itemStyles.dimmed]}>
-            {item.name}
-          </Text>
-          <Text style={[itemStyles.repeat, fonts.light, !item.enabled && itemStyles.dimmed]}>
-            {formatRepeat(item.repeat)}
-          </Text>
-        </View>
-        <View style={itemStyles.toggleSwitch}>
-          <ToggleSwitch
-            isOn={item.enabled}
-            onToggle={() => toggleAlarm(item.id)}
-            toggleOnColor={ACCENT}
-          />
-        </View>
+    <View style={[styles.itemContainer, styles.itemRow]}>
+      <MetroTouchable
+        style={itemStyles.infoContainer}
+        onPress={() => openEdit(item)}
+        onLongPress={() => deleteAlarm(item.id)}
+      >
+        <Text style={[itemStyles.time, fonts.extraLight, !item.enabled && itemStyles.dimmed]}>
+          {formatTime(item.hour24, item.minute)}
+          <Text style={itemStyles.ampm}> {item.hour24 >= 12 ? 'PM' : 'AM'}</Text>
+        </Text>
+        <Text style={[itemStyles.name, fonts.regular, !item.enabled && itemStyles.dimmed]}>
+          {item.name}
+        </Text>
+        <Text style={[itemStyles.repeat, fonts.light, !item.enabled && itemStyles.dimmed]}>
+          {formatRepeat(item.repeat)}
+        </Text>
+      </MetroTouchable>
+      <View style={itemStyles.toggleSwitch}>
+        <ToggleSwitch
+          isOn={item.enabled}
+          onToggle={() => toggleAlarm(item.id)}
+          toggleOnColor={ACCENT}
+        />
       </View>
-    </MetroTouchable>
+    </View>
   );
 
   return (
