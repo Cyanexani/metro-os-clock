@@ -68,7 +68,7 @@ const StopwatchMain = () => {
       } catch (e) {}
     };
     saveState();
-  }, [running, elapsed, laps, loaded]);
+  }, [running, laps, loaded]);
 
   useEffect(() => {
     if (running) {
