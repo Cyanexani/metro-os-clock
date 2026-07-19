@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import { StyleSheet, View, Dimensions, Text, Vibration, ScrollView } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Audio } from 'expo-av';
 import Button from "../components/core/Button";
 import { fonts } from "../styles/fonts";
 import MetroTouchable from "../components/core/MetroTouchable";
 import MetroTile from "../components/core/MetroTile";
 import NewTimerBottomBar from "../components/compound/NewTimerBottomBar";
+import { getRingtone, DEFAULT_RINGTONE } from "../data/ringtones";
 
 const SAVED_KEY = '@metro_saved_timers';
 
@@ -46,6 +48,30 @@ const TimerMain = ({
   const [finished, setFinished] = useState(false);
   const [savedTimers, setSavedTimers] = useState([]);
   const [savedLoaded, setSavedLoaded] = useState(false);
+  const soundRef = useRef(null);
+
+  const stopSound = async () => {
+    if (soundRef.current) {
+      try { await soundRef.current.stopAsync(); } catch (e) { }
+      try { await soundRef.current.unloadAsync(); } catch (e) { }
+      soundRef.current = null;
+    }
+  };
+
+  const playSound = async () => {
+    try {
+      await stopSound();
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, shouldDuckAndroid: false }).catch(() => {});
+      const { sound } = await Audio.Sound.createAsync(
+        getRingtone(DEFAULT_RINGTONE).module,
+        { isLooping: true, volume: 1.0, shouldPlay: true },
+      );
+      soundRef.current = sound;
+    } catch (e) { }
+  };
+
+  // Clean up sound on unmount
+  useEffect(() => () => { stopSound(); }, []);
 
   useEffect(() => {
     (async () => {
@@ -118,6 +144,7 @@ const TimerMain = ({
         setDelay(null);
         setFinished(true);
         Vibration.vibrate([500, 1000, 500, 1000], true);
+        playSound();
         return 0;
       }
 
@@ -128,6 +155,7 @@ const TimerMain = ({
     setDelay(null); // Stop timer
     setFinished(false);
     Vibration.cancel();
+    stopSound();
     const sec = (selectedHour*3600) + (selectedMinute*60) + selectedSecond;
     setCurrentSec(sec);
     console.log("Reset!");
@@ -138,6 +166,7 @@ const TimerMain = ({
 
   const dismissFinished = () => {
     Vibration.cancel();
+    stopSound();
     setFinished(false);
     const sec = (selectedHour*3600) + (selectedMinute*60) + selectedSecond;
     setCurrentSec(sec);
