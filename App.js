@@ -1,6 +1,6 @@
 import { StatusBar, View } from 'react-native';
 import MetroTabs from './components/core/MetroTabs';
-import TestScreen from './screens/TestScreen';
+import WorldClock from './screens/WorldClock';
 import * as Font from 'expo-font';
 import { AppTitle } from './components/core/AppTitle';
 import { NavigationContainer } from '@react-navigation/native';
@@ -55,7 +55,7 @@ const ClockMain = ({navigation, route}) => {
         screens={[
           { key: "0", title: "alarm", screen: <AlarmMain navigation={navigation} route={route}/> },
           { key: "1", title: "timer", screen: <TimerMain navigation={navigation} route={route}/> },
-          { key: "2", title: "world clock", screen: <TestScreen navigation={navigation} route={route}/> },
+          { key: "2", title: "world clock", screen: <WorldClock navigation={navigation} route={route}/> },
         ]}
       />
     </View>
