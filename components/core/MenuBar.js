@@ -51,42 +51,43 @@ export const QuickMenu = ({
     const [expanded, setExpanded] = useState(false);
     const hasOverflow = overflow.length > 0;
     return (
-        <View className={`flex flex-col w-full bg-[#222]`}>
+        <View className="flex flex-col w-full bg-black/90">
             {expanded && hasOverflow && (
-                <View className="w-full flex flex-col border-b border-[#333]">
+                <View className="w-full flex flex-col pb-2">
                     {overflow.map((item) => (
                         <TouchableWithoutFeedback
                             key={item.text}
                             onPress={() => { setExpanded(false); item.onPress && item.onPress(); }}
                         >
-                            <View className="w-full px-5 py-3">
-                                <Text className="text-white text-base lowercase" style={fonts.light}>{item.text}</Text>
+                            <View className="w-full px-6 py-3">
+                                <Text className="text-white text-xl lowercase" style={fonts.light}>{item.text}</Text>
                             </View>
                         </TouchableWithoutFeedback>
                     ))}
                 </View>
             )}
-            <View className={` ${expanded ? "h-20" : "h-14"} flex flex-row w-full `}>
-                <View className="w-[15%] flex"/>
-                <View className="w-[70%] justify-center flex-row">
-                    {options.map((option) => {
-                        return (
-                            <Pressable key={option.text} onPress={option.onPress} hitSlop={12}>
-                                <View className="flex flex-col justify-between items-start mx-4 my-2 mb-3">
-                                    <RoundedButton Icon={option.Icon} />
-                                    {expanded && (<Text className="text-white text-sm" style={fonts.light}>{option.text}</Text>)}
-                                </View>
-                            </Pressable>
-                        )
-                    })}
+            <View className={`flex flex-row w-full ${expanded && hasOverflow ? 'h-[100px]' : 'h-[72px]'} items-center`}>
+                <View className="flex-1 flex-row justify-center items-start pt-3">
+                    {options.map((option) => (
+                        <Pressable key={option.text} onPress={option.onPress} hitSlop={12}>
+                            <View className="flex flex-col items-center mx-4">
+                                <RoundedButton Icon={option.Icon} />
+                                {expanded && hasOverflow && (
+                                    <Text className="text-white text-xs mt-2 lowercase" style={fonts.light}>{option.text}</Text>
+                                )}
+                            </View>
+                        </Pressable>
+                    ))}
                 </View>
-                <TouchableWithoutFeedback onPress={() => setExpanded(!expanded)}>
-                    <View className="w-[15%] h-full items-start justify-center flex flex-row gap-1 pt-2">
-                        <View className="w-1 h-1 bg-white rounded-full" />
-                        <View className="w-1 h-1 bg-white rounded-full" />
-                        <View className="w-1 h-1 bg-white rounded-full" />
-                    </View>
-                </TouchableWithoutFeedback>
+                {hasOverflow && (
+                    <TouchableWithoutFeedback onPress={() => setExpanded(!expanded)}>
+                        <View className="absolute right-4 bottom-0 h-[72px] justify-center flex-row gap-1 items-center px-4">
+                            <View className="w-1.5 h-1.5 bg-white rounded-full" />
+                            <View className="w-1.5 h-1.5 bg-white rounded-full" />
+                            <View className="w-1.5 h-1.5 bg-white rounded-full" />
+                        </View>
+                    </TouchableWithoutFeedback>
+                )}
             </View>
         </View>
     )

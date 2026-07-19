@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, FlatList, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, FlatList, Modal, Pressable } from 'react-native';
 import { Plus } from 'react-native-feather';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fonts } from '../styles/fonts';
+import { useSettings } from '../context/SettingsContext';
 import MetroTouchable from '../components/core/MetroTouchable';
+import WorldMap from '../components/compound/WorldMap';
+import AnimatedCityRow from '../components/compound/AnimatedCityRow';
+import AnimatedTime from '../components/compound/AnimatedTime';
+import useMapZoom, { MAP_DISPLAY_H } from '../components/compound/useMapZoom';
 import { CITY_DATABASE } from '../data/cities';
 
 const STORAGE_KEY = '@world_clock_cities';
@@ -12,21 +17,30 @@ const ACCENT = '#0078D7';
 const timeFormatters = new Map();
 const dateFormatters = new Map();
 
-const getTimeFormatter = (tz) => {
-  if (!timeFormatters.has(tz)) {
-    timeFormatters.set(tz, new Intl.DateTimeFormat('en-US', {
-      timeZone: tz, hour: 'numeric', minute: '2-digit', hour12: true,
+const getTimeFormatter = (tz, use24Hour, showSeconds) => {
+  const key = `${tz}-${use24Hour}-${showSeconds}`;
+  if (!timeFormatters.has(key)) {
+    timeFormatters.set(key, new Intl.DateTimeFormat('en-US', {
+      timeZone: tz || undefined,
+      hour: use24Hour ? '2-digit' : 'numeric',
+      minute: '2-digit',
+      second: showSeconds ? '2-digit' : undefined,
+      hour12: !use24Hour,
+      hourCycle: use24Hour ? 'h23' : undefined,
     }));
   }
-  return timeFormatters.get(tz);
+  return timeFormatters.get(key);
 };
 
 const getDateFormatter = (tz) => {
   const key = tz || 'local';
   if (!dateFormatters.has(key)) {
-    dateFormatters.set(key, new Intl.DateTimeFormat('en-CA', tz
-      ? { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }
-      : { year: 'numeric', month: '2-digit', day: '2-digit' }));
+    dateFormatters.set(key, new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz || undefined,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }));
   }
   return dateFormatters.get(key);
 };
@@ -58,13 +72,13 @@ const getOffsetDiffStr = (date, tz) => {
   }
 };
 
-const getFormattedTimeForTz = (date, tz) => {
+const getFormattedTimeForTz = (date, tz, use24Hour, showSeconds) => {
   try {
-    const parts = getTimeFormatter(tz).formatToParts(date);
+    const parts = getTimeFormatter(tz, use24Hour, showSeconds).formatToParts(date);
     let timeText = '';
     let ampm = '';
     for (const part of parts) {
-      if (part.type === 'hour' || part.type === 'minute' || part.type === 'literal') {
+      if (part.type === 'hour' || part.type === 'minute' || part.type === 'second' || part.type === 'literal') {
         if (part.type === 'literal' && part.value.trim() === '') continue;
         timeText += part.value;
       } else if (part.type === 'dayPeriod') {
@@ -87,6 +101,8 @@ const getFormattedTimeForTz = (date, tz) => {
 };
 
 export default function WorldClock() {
+  const { settings } = useSettings();
+  const { mapAnimatedStyle, selectCity, deselect, selectedId } = useMapZoom();
   const [time, setTime] = useState(new Date());
   const [myCities, setMyCities] = useState([]);
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -121,14 +137,17 @@ export default function WorldClock() {
     }
   }, [myCities, hasLoaded]);
 
-  // Displayed times are minute-precision, so only re-render on minute change.
+  // Displayed times update based on settings
   useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date();
-      setTime(prev => prev.getMinutes() === now.getMinutes() ? prev : now);
-    }, 1000);
+      setTime(prev => {
+        if (settings.showSeconds) return now; // always update if showing seconds
+        return prev.getMinutes() === now.getMinutes() ? prev : now;
+      });
+    }, settings.showSeconds ? 250 : 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [settings.showSeconds]);
 
   const handleAddCity = (city) => {
     if (!myCities.find(c => c.id === city.id)) {
@@ -149,14 +168,25 @@ export default function WorldClock() {
 
   const localTzInfo = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const localCityName = localTzInfo ? localTzInfo.split('/').pop().replace(/_/g, ' ').toLowerCase() : 'local time';
-  const { time: localTimeText, ampm: localAmpm } = getFormattedTimeForTz(time, null);
+  const { time: localTimeText, ampm: localAmpm } = getFormattedTimeForTz(time, null, settings.use24Hour, settings.showSeconds);
 
   return (
     <View style={styles.container}>
+      {/* World map with day/night terminator and city pins.
+          Tapping the map (away from the list) zooms back out. */}
+      <Pressable style={styles.mapContainer} onPress={deselect}>
+        <WorldMap
+          cities={myCities}
+          selectedId={selectedId}
+          date={time}
+          mapAnimatedStyle={mapAnimatedStyle}
+        />
+      </Pressable>
+
       {/* Local Time Header */}
       <View style={styles.localTimeContainer}>
         <View style={styles.timeRow}>
-          <Text style={[styles.localTime, fonts.extraLight]}>{localTimeText}</Text>
+          <AnimatedTime value={localTimeText} style={[styles.localTime, fonts.extraLight]} />
           <Text style={[styles.localAmpm, fonts.regular]}>{localAmpm}</Text>
         </View>
         <Text style={[styles.localCityName, fonts.regular]}>{localCityName}</Text>
@@ -171,26 +201,20 @@ export default function WorldClock() {
         showsVerticalScrollIndicator={false}
       >
         {myCities.map((city) => {
-          const { time: cTime, ampm: cAmpm, dayText: cDay, offsetText } = getFormattedTimeForTz(time, city.tz);
+          const { time: cTime, ampm: cAmpm, dayText: cDay, offsetText } = getFormattedTimeForTz(time, city.tz, settings.use24Hour, settings.showSeconds);
 
           return (
-            <MetroTouchable
+            <AnimatedCityRow
               key={city.id}
-              style={styles.cityRow}
+              city={city}
+              timeText={cTime}
+              ampm={cAmpm}
+              dayText={cDay}
+              offsetText={offsetText}
+              selectedId={selectedId}
+              onPress={() => selectCity(city)}
               onLongPress={() => handleRemoveCity(city.id)}
-            >
-              <View style={styles.cityRowLeft}>
-                <View style={styles.timeRow}>
-                  <Text style={[styles.cityTime, fonts.extraLight]}>{cTime}</Text>
-                  <Text style={[styles.cityAmpm, fonts.regular]}>{cAmpm}</Text>
-                </View>
-                <Text style={[styles.cityName, fonts.regular]}>{city.name.toLowerCase()}</Text>
-                {cDay ? <Text style={[styles.cityDay, fonts.regular]}>{cDay}</Text> : null}
-              </View>
-              <View style={styles.cityRowRight}>
-                <Text style={[styles.offsetText, fonts.regular]}>{offsetText}</Text>
-              </View>
-            </MetroTouchable>
+            />
           );
         })}
       </ScrollView>
@@ -236,26 +260,18 @@ export default function WorldClock() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: 'black' },
-  
-  localTimeContainer: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 25 },
+
+  mapContainer: { width: '100%', height: MAP_DISPLAY_H, backgroundColor: '#060D1A' },
+
+  localTimeContainer: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
   timeRow: { flexDirection: 'row', alignItems: 'baseline' },
-  localTime: { color: 'white', fontSize: 80, includeFontPadding: false },
-  localAmpm: { color: 'white', fontSize: 24, marginLeft: 8 },
+  localTime: { color: 'white', fontSize: 64, includeFontPadding: false },
+  localAmpm: { color: 'white', fontSize: 22, marginLeft: 8 },
   localCityName: { color: ACCENT, fontSize: 18, marginTop: -5 },
 
   listContainer: { flex: 1 },
   listContent: { paddingBottom: 20 },
-  
-  cityRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 15 },
-  cityRowLeft: { flex: 1 },
-  cityRowRight: { justifyContent: 'flex-start', alignItems: 'flex-end', paddingTop: 10 },
-  
-  cityTime: { color: 'white', fontSize: 48, includeFontPadding: false },
-  cityAmpm: { color: 'white', fontSize: 18, marginLeft: 6 },
-  cityName: { color: 'white', fontSize: 16, marginTop: -2 },
-  cityDay: { color: '#888', fontSize: 14, marginTop: 2 },
-  offsetText: { color: ACCENT, fontSize: 14 },
-  
+
   appBar: { height: 65, backgroundColor: 'black', flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
   fab: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: 'white', justifyContent: 'center', alignItems: 'center' },
   fabClose: { color: 'white', fontSize: 20, marginBottom: 2 },

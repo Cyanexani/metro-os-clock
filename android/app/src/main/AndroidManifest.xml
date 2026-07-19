@@ -26,6 +26,8 @@
   <!-- Allow running foreground service for alarm sound -->
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+  <!-- Let the app ask to be exempt from battery optimization / Doze -->
+  <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
 
   <queries>
     <intent>
@@ -60,6 +62,25 @@
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+      <!-- Mark this app as an alarm/timer handler so the OS and Assistant
+           treat it as a clock app (SET_ALARM/SET_TIMER voice + system intents). -->
+      <intent-filter>
+        <action android:name="android.intent.action.SET_ALARM"/>
+        <action android:name="android.intent.action.SET_TIMER"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+      </intent-filter>
+      <intent-filter>
+        <action android:name="android.intent.action.SHOW_ALARMS"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+      </intent-filter>
+      <intent-filter>
+        <action android:name="android.intent.action.SHOW_TIMERS"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+      </intent-filter>
+      <intent-filter>
+        <action android:name="android.intent.action.DISMISS_ALARM"/>
+        <category android:name="android.intent.category.DEFAULT"/>
       </intent-filter>
       <intent-filter>
         <action android:name="android.intent.action.VIEW"/>

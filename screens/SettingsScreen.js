@@ -46,12 +46,6 @@ export default function SettingsScreen({ navigation }) {
           onToggle={() => setSetting('showSeconds', !settings.showSeconds)}
         />
         <Row
-          label="week starts monday"
-          description="first day of the week"
-          value={settings.weekStartsMonday}
-          onToggle={() => setSetting('weekStartsMonday', !settings.weekStartsMonday)}
-        />
-        <Row
           label="vibrate on alarm"
           description="vibrate when an alarm rings"
           value={settings.vibrateOnAlarm}

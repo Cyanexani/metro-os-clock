@@ -22,7 +22,17 @@
         "foregroundImage": "./assets/icon.jpg",
         "backgroundColor": "#0078D7"
       },
-      "package": "com.cyanexani.metroosclock"
+      "package": "com.cyanexani.metroosclock",
+      "permissions": [
+        "SCHEDULE_EXACT_ALARM",
+        "USE_EXACT_ALARM",
+        "POST_NOTIFICATIONS",
+        "VIBRATE",
+        "WAKE_LOCK",
+        "RECEIVE_BOOT_COMPLETED",
+        "FOREGROUND_SERVICE",
+        "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"

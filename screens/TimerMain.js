@@ -9,6 +9,7 @@ import MetroTouchable from "../components/core/MetroTouchable";
 import MetroTile from "../components/core/MetroTile";
 import NewTimerBottomBar from "../components/compound/NewTimerBottomBar";
 import { getRingtone, DEFAULT_RINGTONE } from "../data/ringtones";
+import { useSettings } from "../context/SettingsContext";
 
 const SAVED_KEY = '@metro_saved_timers';
 
@@ -39,6 +40,7 @@ const TimerMain = ({
   route,
   setTabIndex
 }) => {  
+  const { settings } = useSettings();
   
   const [selectedHour, setSelectedHour] = useState(0);
   const [selectedMinute, setSelectedMinute] = useState(0);
@@ -144,7 +146,9 @@ const TimerMain = ({
       } else {
         setDelay(null);
         setFinished(true);
-        Vibration.vibrate([500, 1000, 500, 1000], true);
+        if (settings.vibrateOnAlarm) {
+          Vibration.vibrate([500, 1000, 500, 1000], true);
+        }
         playSound();
         return 0;
       }

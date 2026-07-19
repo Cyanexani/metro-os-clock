@@ -12,6 +12,7 @@ import TimerNew from './screens/TimerNew';
 import SettingsScreen from './screens/SettingsScreen';
 import { SettingsProvider } from './context/SettingsContext';
 import RingtoneScreen from './screens/RingtoneScreen';
+import BatteryOptPrompt from './components/compound/BatteryOptPrompt';
 
 const Stack = createNativeStackNavigator();
 
@@ -40,6 +41,7 @@ export default function App() {
           {/* Add more screens here so we can navigate to them */}
         </Stack.Navigator>
       </NavigationContainer>
+      <BatteryOptPrompt />
     </View>
     </SettingsProvider>
   );

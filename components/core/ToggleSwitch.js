@@ -18,19 +18,22 @@ const BORDER_WIDTH = 3;
 const ToggleSwitch = ({
   onToggle,
   isOn = false,
-  toggleOffColor = 'black',
-  toggleOnColor = 'orange',
-  knobColor = '#c0c0c0ff',
+  toggleOffColor = 'transparent',
+  toggleOnColor = '#0078D7',
+  knobColorOff = 'white',
+  knobColorOn = 'white',
   outerBorderColor = 'white',
-  innerBorderColor = 'black',
-  height = 25,
-  width = 60,
+  height = 32,
+  width = 68,
 }) => {
   const InterpolateXInput = [0, 1];
   const CONTAINER_WIDTH = width;
   const CONTAINER_HEIGHT = height;
-  const KNOB_WIDTH = CONTAINER_WIDTH/3.5;
-  const KNOB_HEIGHT = CONTAINER_HEIGHT + (2*BORDER_WIDTH);
+  const BORDER_WIDTH = 2;
+  // Make the knob a perfect square inside the track
+  const KNOB_SIZE = CONTAINER_HEIGHT - (BORDER_WIDTH * 2) - 8; 
+  const KNOB_WIDTH = KNOB_SIZE;
+  const KNOB_HEIGHT = KNOB_SIZE;
   
   const sharedValue = useSharedValue(isOn ? 1 : 0);
 
@@ -39,8 +42,7 @@ const ToggleSwitch = ({
     width: CONTAINER_WIDTH,
   };
   const containerColors = {
-    backgroundColor: toggleOffColor,
-    borderColor: outerBorderColor,
+    borderColor: isOn ? toggleOnColor : outerBorderColor,
   };
 
   const knobScale = {
@@ -49,8 +51,7 @@ const ToggleSwitch = ({
   };
 
   const knobColors = {
-    backgroundColor: knobColor,
-    borderColor: innerBorderColor,
+    backgroundColor: isOn ? knobColorOn : knobColorOff,
   };
 
   useEffect(() => {
@@ -89,7 +90,7 @@ const ToggleSwitch = ({
           translateX: interpolate(
             sharedValue.value,
             InterpolateXInput,
-            [-BORDER_WIDTH, CONTAINER_WIDTH - KNOB_WIDTH],
+            [4, CONTAINER_WIDTH - KNOB_WIDTH - (BORDER_WIDTH * 2) - 4],
             Extrapolation.CLAMP,
           ),
         },
@@ -109,12 +110,6 @@ const ToggleSwitch = ({
   return (
     <TouchableWithoutFeedback onPress={onPressSwitch}>
       <Animated.View style={[styles.containerStyle, containerScale, containerColors, containerColorStyle]}>
-        <Animated.View style={{
-          width: CONTAINER_WIDTH-(2*BORDER_WIDTH), height: CONTAINER_HEIGHT-(2*BORDER_WIDTH), 
-          backgroundColor: '#ffffff00',
-          borderWidth: BORDER_WIDTH,
-          borderColor: innerBorderColor
-          }}/>
         <Animated.View
           style={[styles.knobStyle, knobScale, knobTranslateStyle, knobColors]}
         />
@@ -126,11 +121,10 @@ const ToggleSwitch = ({
 const styles = StyleSheet.create({
   containerStyle: {
     justifyContent: 'center',
-    borderWidth: BORDER_WIDTH,
+    borderWidth: 2,
   },
   knobStyle: {
     position: 'absolute',
-    borderWidth: BORDER_WIDTH,
   },
 });
 

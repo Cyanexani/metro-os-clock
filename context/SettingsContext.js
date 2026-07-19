@@ -8,6 +8,7 @@ const DEFAULTS = {
   showSeconds: false,
   weekStartsMonday: false,
   vibrateOnAlarm: true,
+  batteryPromptShown: false,
 };
 
 const SettingsContext = createContext({
