@@ -1,4 +1,4 @@
-name: Android Debug APK
+name: Android Build
 
 on:
   workflow_dispatch:
@@ -38,13 +38,53 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
+      # ── Debug APK ──────────────────────────────────────────────────────────
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
 
-      - name: Upload APK
+      - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      # ── Release APK (self-signed) ──────────────────────────────────────────
+      # Generates a release keystore on the fly.
+      # To use your own key: add KEYSTORE_BASE64, KEY_ALIAS, KEY_PASSWORD,
+      # STORE_PASSWORD as GitHub Actions secrets, and swap the keytool step
+      # for: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > metro-clock.jks
+      - name: Generate release keystore
+        run: |
+          keytool -genkeypair \
+            -v \
+            -keystore android/app/metro-clock-release.jks \
+            -alias metro-clock \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass metroclockpass \
+            -keypass metroclockpass \
+            -dname "CN=Metro Clock, OU=App, O=MetroOS, L=Unknown, S=Unknown, C=US"
+
+      - name: Build release APK
+        working-directory: android
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/android/app/metro-clock-release.jks
+          KEY_ALIAS: metro-clock
+          KEY_PASSWORD: metroclockpass
+          STORE_PASSWORD: metroclockpass
+        run: |
+          ./gradlew assembleRelease --no-daemon \
+            -Pandroid.injected.signing.store.file="$KEYSTORE_PATH" \
+            -Pandroid.injected.signing.store.password="$STORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
+
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
