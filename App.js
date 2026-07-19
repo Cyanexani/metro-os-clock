@@ -20,11 +20,6 @@ export default function App() {
     'selawikLight': require('./assets/fonts/selawkl.ttf'),
     'selawikRegular': require('./assets/fonts/selawk.ttf'),
     'selawikSemiLight': require('./assets/fonts/selawksl.ttf'),
-    'notoSansLight': require('./assets/fonts/NotoSans-Light.ttf'),
-    'notoSansRegular': require('./assets/fonts/NotoSans-Regular.ttf'),
-    'notoSansExtraLight': require('./assets/fonts/NotoSans-ExtraLight.ttf'),
-    'openSansLight': require('./assets/fonts/OpenSans-Light.ttf'),
-    'openSansRegular': require('./assets/fonts/OpenSans-Regular.ttf'),
   });
 
   if (!fontsLoaded) {

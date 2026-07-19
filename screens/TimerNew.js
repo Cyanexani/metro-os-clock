@@ -4,6 +4,7 @@ import { StyleSheet, View, Text } from "react-native";
 import StartTimerBottomBar from "../components/compound/StartTimerBottomBar";
 import TimePicker from "../components/core/TimePicker";
 import { AppTitle } from '../components/core/AppTitle';
+import { fonts } from "../styles/fonts";
 
 
 
@@ -44,7 +45,7 @@ const TimerNew = ({
   return (
     <View style={styles.container}>
       <AppTitle title={"clock"}></AppTitle>
-      <Text style={styles.title}>
+      <Text style={[styles.title, fonts.light]}>
         new timer
       </Text>
       {/* Time pickers */}

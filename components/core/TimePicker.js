@@ -33,7 +33,6 @@ const TimePicker = ({
   const halfSquareCount = Math.floor(effectiveSquareCount/2);
 
   const [activeID, setActiveID] = useState(initialSelectedIndex + halfSquareCount);
-  const [scrollY, setScrollY] = useState(0);
   const [isScrolling, setIsScrolling] = useState(false);
   const [expanded, setExpanded] = useState(true);
   const flatListRef = useRef(null);
@@ -117,7 +116,6 @@ const TimePicker = ({
   const scrollHandler = (event) => {
     // Should I move everything to scrollEndHandler for performance reasons?
     const offsetY = event.nativeEvent.contentOffset.y;
-    setScrollY(offsetY);
     const topID = Math.round(offsetY / SQUARE_HEIGHT_WITH_MARGIN);
     const centerID = topID + halfSquareCount;
     if (centerID !== activeID && centerID >= halfSquareCount && centerID < halfSquareCount + values.length)
