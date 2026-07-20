@@ -83,5 +83,5 @@ export default function useMapZoom() {
     setSelectedId(city.id);
   }, [deselect]);
 
-  return { mapAnimatedStyle, selectCity, deselect, selectedId, VIEWPORT_H };
+  return { mapAnimatedStyle, selectCity, deselect, selectedId };
 }
