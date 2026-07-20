@@ -1,10 +1,10 @@
 import React, { useMemo } from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Image, StyleSheet } from 'react-native';
 import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 import Animated from 'react-native-reanimated';
-import { fonts } from '../../styles/fonts';
 import worldMap from '../../assets/world-map.png';
 import { lonToX, latToY } from '../../data/cities';
+import { MAP_DISPLAY_H } from './useMapZoom';
 
 // The source map is a standard equirectangular projection (lon -180..180 → x,
 // lat 90..-90 → y). All positions are percentages of the map's own box so the
@@ -48,8 +48,10 @@ const buildTerminatorPath = (date) => {
   }
 
   // The hemisphere that is dark depends on the sign of the declination.
+  // Northern summer (decl > 0) → night is biased south → close the polygon
+  // over the SOUTH pole. (Closing over the wrong pole shades the day side.)
   const nightIsNorth = decl > 0 ? false : true;
-  const capLat = nightIsNorth ? -90 : 90;
+  const capLat = nightIsNorth ? 90 : -90;
 
   // Build an SVG path in percentage space, then close it over the dark pole.
   let d = '';
@@ -76,62 +78,63 @@ const WorldMap = ({
   );
 
   return (
-    // Keep the transformed map inside a static clipping viewport. Clipping on
-    // the transformed node itself happens before the scale/translation and
-    // lets a zoomed map bleed into the city list and adjacent tabs.
+    // Full-screen clipping layer behind the page content. Idle, the map strip
+    // sits in the top MAP_DISPLAY_H; selecting a city scales it up so the map
+    // spreads across the whole screen behind the header and rows
+    // (refs 012501/012508/012512), while this layer stops it bleeding into
+    // the adjacent pivot tabs.
     <View style={styles.clipViewport} pointerEvents="none" collapsable={false}>
       <Animated.View style={[styles.mapBox, mapAnimatedStyle]}>
-      {/* Ocean base */}
-      <View style={styles.ocean} />
+        {/* Ocean base */}
+        <View style={styles.ocean} />
 
-      {/* Landmasses — the gray PNG tinted toward the WP lit-land grey */}
-      <Image source={worldMap} style={styles.landImage} resizeMode="stretch" />
+        {/* Landmasses — the gray PNG tinted to the WP lit-land near-white */}
+        <Image source={worldMap} style={styles.landImage} resizeMode="stretch" />
 
-      {/* Day/night terminator shadow, drawn in percentage viewBox space */}
-      <Svg style={StyleSheet.absoluteFill} viewBox="0 0 100 100" preserveAspectRatio="none">
-        <Defs>
-          <LinearGradient id="nightFade" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor="#050B16" stopOpacity="0.72" />
-            <Stop offset="1" stopColor="#050B16" stopOpacity="0.72" />
-          </LinearGradient>
-        </Defs>
-        <Path d={terminatorPath} fill="url(#nightFade)" />
-      </Svg>
+        {/* Day/night terminator shadow, drawn in percentage viewBox space */}
+        <Svg style={StyleSheet.absoluteFill} viewBox="0 0 100 100" preserveAspectRatio="none">
+          <Defs>
+            <LinearGradient id="nightFade" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor="#050B16" stopOpacity="0.72" />
+              <Stop offset="1" stopColor="#050B16" stopOpacity="0.72" />
+            </LinearGradient>
+          </Defs>
+          <Path d={terminatorPath} fill="url(#nightFade)" />
+        </Svg>
 
-      {/* City pins + labels, absolutely positioned by projected percentage.
-          The wrapper is a zero-size point at the coordinate; the dot is
-          centred on it and the label floats above without shifting the dot. */}
-      {cities.map((city) => {
-        const active = city.id === selectedId;
-        return (
-          <View
-            key={city.id}
-            pointerEvents="none"
-            style={[styles.pinWrap, { left: `${city.x}%`, top: `${city.y}%` }]}
-          >
-            <View style={styles.labelWrap}>
-              <Text
-                numberOfLines={1}
-                style={[styles.pinLabel, fonts.light, active && styles.pinLabelActive]}
-              >
-                {city.name.split(',')[0].toLowerCase()}
-              </Text>
+        {/* City pins — glowing dots only, no text labels, per the reference
+            stills. The wrapper is a zero-size point at the coordinate; the
+            dot is centred on it. */}
+        {cities.map((city) => {
+          const active = city.id === selectedId;
+          return (
+            <View
+              key={city.id}
+              pointerEvents="none"
+              style={[styles.pinWrap, { left: `${city.x}%`, top: `${city.y}%` }]}
+            >
+              <View style={[styles.pinDot, active && styles.pinDotActive]} />
             </View>
-            <View style={[styles.pinDot, active && styles.pinDotActive]} />
-          </View>
-        );
-      })}
+          );
+        })}
+
+        {/* The source silhouette includes Antarctica; the reference map crop
+            ends at the southern ocean, so mask that strip. Black-on-black when
+            zoomed, so it never reads as a band. */}
+        <View style={styles.southernOceanMask} />
       </Animated.View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  clipViewport: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
-  mapBox: { width: '100%', height: '100%', overflow: 'hidden', backgroundColor: '#000000' },
+  clipViewport: { ...StyleSheet.absoluteFillObject, overflow: 'hidden', backgroundColor: '#000000' },
+  // The transformable strip the zoom math targets: full width, MAP_DISPLAY_H
+  // tall, anchored to the top of the screen.
+  mapBox: { width: '100%', height: MAP_DISPLAY_H, overflow: 'hidden', backgroundColor: '#000000' },
   ocean: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000000' },
-  // tintColor recolors the gray land silhouette to the WP lit-land grey.
-  landImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%', tintColor: '#C7CDD3' },
+  // tintColor recolors the gray land silhouette to the WP lit-land near-white.
+  landImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%', tintColor: '#DDE3E8' },
   pinWrap: {
     position: 'absolute',
     width: 0,
@@ -139,22 +142,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  labelWrap: {
-    position: 'absolute',
-    bottom: 6,
-    alignItems: 'center',
-    width: 120,
-    marginLeft: -60,
-  },
-  pinLabel: {
-    color: 'white',
-    fontSize: 9,
-    textAlign: 'center',
-    textShadowColor: 'rgba(0,0,0,0.9)',
-    textShadowRadius: 3,
-    opacity: 0.9,
-  },
-  pinLabelActive: { opacity: 1, fontSize: 10 },
   pinDot: {
     position: 'absolute',
     width: 8,
@@ -176,6 +163,15 @@ const styles = StyleSheet.create({
     marginTop: -5,
     backgroundColor: '#4FA3FF',
     shadowColor: '#4FA3FF',
+  },
+  southernOceanMask: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    // latToY(-60) ≈ 83.3% — everything below is only Antarctica.
+    height: '16.6%',
+    backgroundColor: '#000000',
   },
 });
 

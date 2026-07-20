@@ -292,8 +292,11 @@ const styles = StyleSheet.create({
       backgroundColor: 'black',
       width: "100%",
       flexDirection: "column",
-      paddingTop: "50%"
-      // height: "80%", // So we can see the bottom bar (TODO: Make it responsive)
+      // Centre the ring in the free area above the app bar; the bar is
+      // absolutely positioned at the bottom, so reserve its height instead
+      // of shoving content down with top padding.
+      justifyContent: 'center',
+      paddingBottom: 65,
     },
     bottomBarContainer: {
       width: "100%",
@@ -302,10 +305,8 @@ const styles = StyleSheet.create({
       flex: 1,
     },
     timerItemContainer: {
-      height: '100%',
       width: "100%",
       flexDirection: 'column',
-      // justifyContent: 'center',
       alignItems: 'center',
       gap: 20,
     },

@@ -101,10 +101,15 @@ export function RepeatsPage({ repeat, onToggleDay, onAccept, onCancel }) {
           const checked = repeat.includes(abbr);
           return (
             <MetroTouchable key={abbr} style={styles.dayRow} onPress={() => onToggleDay(abbr)}>
-              <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
-                {checked ? <Text style={styles.checkGlyph}>✓</Text> : null}
+              {/* MetroTouchable renders children inside an inner Animated.View,
+                  so the row direction must live on this wrapper, not on the
+                  touchable's own style. */}
+              <View style={styles.dayRowInner}>
+                <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
+                  {checked ? <Text style={styles.checkGlyph}>✓</Text> : null}
+                </View>
+                <Text style={[styles.dayText, fonts.regular]}>{full}</Text>
               </View>
-              <Text style={[styles.dayText, fonts.regular]}>{full}</Text>
             </MetroTouchable>
           );
         })}
@@ -133,7 +138,8 @@ const styles = StyleSheet.create({
   tileTextIdle: { color: '#d0d0d0', fontSize: 36 },
 
   daysContent: { paddingHorizontal: 20, paddingTop: 8 },
-  dayRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14 },
+  dayRow: { paddingVertical: 14 },
+  dayRowInner: { flexDirection: 'row', alignItems: 'center' },
   checkbox: { width: 26, height: 26, borderWidth: 2, borderColor: 'white', justifyContent: 'center', alignItems: 'center' },
   checkboxChecked: { backgroundColor: 'transparent' },
   checkGlyph: { color: 'white', fontSize: 18, lineHeight: 20 },
