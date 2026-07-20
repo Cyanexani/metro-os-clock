@@ -321,8 +321,12 @@ export default function AlarmMain({ navigation }) {
   };
 
   const openAdd = () => {
+    // WP seeds the picker with the phone's current time rounded to the
+    // nearest hour (16:53 → 17:00).
+    const now = new Date();
+    const rounded = (now.getHours() + (now.getMinutes() >= 30 ? 1 : 0)) % 24;
     setEditingId(null);
-    setDraftHour24(8);
+    setDraftHour24(rounded);
     setDraftMinute(0);
     setDraftName('Alarm');
     setDraftRepeat([]);
