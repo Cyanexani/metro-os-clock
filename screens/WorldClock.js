@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, FlatList, Modal, Pressable } from 'react-native';
-import { Plus } from 'react-native-feather';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fonts } from '../styles/fonts';
 import { useSettings } from '../context/SettingsContext';
 import MetroTouchable from '../components/core/MetroTouchable';
 import WorldMap from '../components/compound/WorldMap';
 import AnimatedCityRow from '../components/compound/AnimatedCityRow';
-import AnimatedTime from '../components/compound/AnimatedTime';
+import WorldClockHeader from '../components/compound/WorldClockHeader';
+import WorldClockAppBar from '../components/compound/WorldClockAppBar';
 import useMapZoom, { MAP_DISPLAY_H } from '../components/compound/useMapZoom';
 import { CITY_DATABASE } from '../data/cities';
 
 const STORAGE_KEY = '@world_clock_cities';
-const ACCENT = '#0078D7';
 
 const timeFormatters = new Map();
 const dateFormatters = new Map();
@@ -45,28 +44,19 @@ const getDateFormatter = (tz) => {
   return dateFormatters.get(key);
 };
 
-const getOffsetDiffStr = (date, tz) => {
-  if (!tz) return 'same time';
-  const getParts = (t) => {
-    const dtf = new Intl.DateTimeFormat('en-US', {
-      timeZone: t, year: 'numeric', month: 'numeric', day: 'numeric',
-      hour: 'numeric', minute: 'numeric', hour12: false
-    });
-    const parts = dtf.formatToParts(date);
-    const map = {};
-    parts.forEach(p => map[p.type] = p.value);
-    return map;
-  };
+// "Date display: Day of Week" mode (settings ref 012554) — the row's day line
+// shows the weekday name in the city's timezone instead of Today/Yesterday.
+const weekdayFormatters = new Map();
+const getWeekdayForTz = (date, tz) => {
+  const key = tz || 'local';
+  if (!weekdayFormatters.has(key)) {
+    weekdayFormatters.set(key, new Intl.DateTimeFormat('en-US', {
+      timeZone: tz || undefined,
+      weekday: 'long',
+    }));
+  }
   try {
-    const target = getParts(tz);
-    const local = getParts(undefined);
-    const tDate = Date.UTC(target.year, target.month - 1, target.day, target.hour, target.minute);
-    const lDate = Date.UTC(local.year, local.month - 1, local.day, local.hour, local.minute);
-    let diff = (tDate - lDate) / 3600000;
-    
-    if (Math.abs(diff) < 0.05) return 'same time';
-    const sign = diff > 0 ? '+' : '';
-    return `${sign}${diff}h`;
+    return weekdayFormatters.get(key).format(date);
   } catch (e) {
     return '';
   }
@@ -92,15 +82,13 @@ const getFormattedTimeForTz = (date, tz, use24Hour, showSeconds) => {
     if (targetDate > localDate) dayText = 'tomorrow';
     else if (targetDate < localDate) dayText = 'yesterday';
 
-    const offsetText = getOffsetDiffStr(date, tz);
-
-    return { time: timeText, ampm, dayText, offsetText };
+    return { time: timeText, ampm, dayText };
   } catch (e) {
-    return { time: '--:--', ampm: '', dayText: '', offsetText: '' };
+    return { time: '--:--', ampm: '', dayText: '' };
   }
 };
 
-export default function WorldClock() {
+export default function WorldClock({ navigation }) {
   const { settings } = useSettings();
   const { mapAnimatedStyle, selectCity, deselect, selectedId } = useMapZoom();
   const [time, setTime] = useState(new Date());
@@ -108,6 +96,7 @@ export default function WorldClock() {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [isModalVisible, setModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [reorderMode, setReorderMode] = useState(false);
 
   // Load saved cities
   useEffect(() => {
@@ -161,13 +150,30 @@ export default function WorldClock() {
     setMyCities(myCities.filter(c => c.id !== id));
   };
 
+  const moveCity = (index, direction) => {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= myCities.length) return;
+    setMyCities(prev => {
+      const next = [...prev];
+      [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+      return next;
+    });
+  };
+
   const filteredSearch = (searchQuery.trim() === ''
     ? CITY_DATABASE
     : CITY_DATABASE.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
   ).slice(0, 100);
 
+  // Match the local city to the database so its header label is formatted
+  // identically to the rows below (Title Case "City, Region, Country"). Fall
+  // back to prettifying the IANA zone if the exact zone isn't in the database.
   const localTzInfo = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const localCityName = localTzInfo ? localTzInfo.split('/').pop().replace(/_/g, ' ').toLowerCase() : 'local time';
+  const localDbCity = localTzInfo ? CITY_DATABASE.find(c => c.tz === localTzInfo) : null;
+  const prettifyZone = (tz) => tz
+    ? tz.split('/').pop().replace(/_/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase())
+    : 'Local time';
+  const localCityName = localDbCity ? localDbCity.name : prettifyZone(localTzInfo);
   const { time: localTimeText, ampm: localAmpm } = getFormattedTimeForTz(time, null, settings.use24Hour, settings.showSeconds);
 
   return (
@@ -181,16 +187,19 @@ export default function WorldClock() {
           date={time}
           mapAnimatedStyle={mapAnimatedStyle}
         />
+        <Text style={[styles.overline, fonts.regular]} pointerEvents="none">
+          WORLD CLOCK
+        </Text>
       </Pressable>
 
       {/* Local Time Header */}
-      <View style={styles.localTimeContainer}>
-        <View style={styles.timeRow}>
-          <AnimatedTime value={localTimeText} style={[styles.localTime, fonts.extraLight]} />
-          <Text style={[styles.localAmpm, fonts.regular]}>{localAmpm}</Text>
-        </View>
-        <Text style={[styles.localCityName, fonts.regular]}>{localCityName}</Text>
-      </View>
+      <WorldClockHeader
+        timeText={localTimeText}
+        ampm={localAmpm}
+        cityName={localCityName}
+        dayText={settings.dateDisplay === 'weekday' ? getWeekdayForTz(time, null) : 'Today'}
+        dimmed={selectedId !== null}
+      />
 
       {/* Cities List */}
       <ScrollView
@@ -200,8 +209,11 @@ export default function WorldClock() {
         overScrollMode="never"
         showsVerticalScrollIndicator={false}
       >
-        {myCities.map((city) => {
-          const { time: cTime, ampm: cAmpm, dayText: cDay, offsetText } = getFormattedTimeForTz(time, city.tz, settings.use24Hour, settings.showSeconds);
+        {myCities.map((city, index) => {
+          const { time: cTime, ampm: cAmpm, dayText: cDay } = getFormattedTimeForTz(time, city.tz, settings.use24Hour, settings.showSeconds);
+          const rowDay = settings.dateDisplay === 'weekday'
+            ? getWeekdayForTz(time, city.tz)
+            : (cDay || 'Today');
 
           return (
             <AnimatedCityRow
@@ -209,22 +221,26 @@ export default function WorldClock() {
               city={city}
               timeText={cTime}
               ampm={cAmpm}
-              dayText={cDay}
-              offsetText={offsetText}
+              dayText={rowDay}
               selectedId={selectedId}
-              onPress={() => selectCity(city)}
-              onLongPress={() => handleRemoveCity(city.id)}
+              reorderMode={reorderMode}
+              onMoveUp={() => moveCity(index, -1)}
+              onMoveDown={() => moveCity(index, 1)}
+              onPress={reorderMode ? undefined : () => selectCity(city)}
+              onLongPress={reorderMode ? undefined : () => handleRemoveCity(city.id)}
             />
           );
         })}
       </ScrollView>
 
       {/* Bottom App Bar */}
-      <View style={styles.appBar}>
-        <MetroTouchable style={styles.fab} onPress={() => setModalVisible(true)}>
-          <Plus stroke="white" width={24} height={24} />
-        </MetroTouchable>
-      </View>
+      <WorldClockAppBar
+        onAdd={() => setModalVisible(true)}
+        onOpenSettings={() => navigation && navigation.navigate('WorldClockSettings')}
+        onReorder={() => setReorderMode(true)}
+        reorderMode={reorderMode}
+        onDoneReorder={() => setReorderMode(false)}
+      />
 
       {/* Add Location Modal */}
       <Modal visible={isModalVisible} animationType="slide" transparent={false} onRequestClose={() => setModalVisible(false)}>
@@ -261,13 +277,16 @@ export default function WorldClock() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: 'black' },
 
-  mapContainer: { width: '100%', height: MAP_DISPLAY_H, backgroundColor: '#060D1A' },
+  mapContainer: { width: '100%', height: MAP_DISPLAY_H, backgroundColor: '#000000', overflow: 'hidden' },
 
-  localTimeContainer: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
-  timeRow: { flexDirection: 'row', alignItems: 'baseline' },
-  localTime: { color: 'white', fontSize: 64, includeFontPadding: false },
-  localAmpm: { color: 'white', fontSize: 22, marginLeft: 8 },
-  localCityName: { color: ACCENT, fontSize: 18, marginTop: -5 },
+  overline: {
+    position: 'absolute',
+    top: 12,
+    left: 20,
+    color: 'white',
+    fontSize: 13,
+    letterSpacing: 1,
+  },
 
   listContainer: { flex: 1 },
   listContent: { paddingBottom: 20 },

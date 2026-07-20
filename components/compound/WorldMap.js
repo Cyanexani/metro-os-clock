@@ -76,11 +76,15 @@ const WorldMap = ({
   );
 
   return (
-    <Animated.View style={[styles.mapBox, mapAnimatedStyle]}>
+    // Keep the transformed map inside a static clipping viewport. Clipping on
+    // the transformed node itself happens before the scale/translation and
+    // lets a zoomed map bleed into the city list and adjacent tabs.
+    <View style={styles.clipViewport} pointerEvents="none" collapsable={false}>
+      <Animated.View style={[styles.mapBox, mapAnimatedStyle]}>
       {/* Ocean base */}
       <View style={styles.ocean} />
 
-      {/* Landmasses — the gray PNG tinted toward Metro's lit-land blue */}
+      {/* Landmasses — the gray PNG tinted toward the WP lit-land grey */}
       <Image source={worldMap} style={styles.landImage} resizeMode="stretch" />
 
       {/* Day/night terminator shadow, drawn in percentage viewBox space */}
@@ -117,15 +121,17 @@ const WorldMap = ({
           </View>
         );
       })}
-    </Animated.View>
+      </Animated.View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  mapBox: { width: '100%', height: '100%', overflow: 'hidden', backgroundColor: '#060D1A' },
-  ocean: { ...StyleSheet.absoluteFillObject, backgroundColor: '#060D1A' },
-  // tintColor recolors the gray land silhouette to Metro's lit-land blue.
-  landImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%', tintColor: '#1A2E4A' },
+  clipViewport: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
+  mapBox: { width: '100%', height: '100%', overflow: 'hidden', backgroundColor: '#000000' },
+  ocean: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000000' },
+  // tintColor recolors the gray land silhouette to the WP lit-land grey.
+  landImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%', tintColor: '#C7CDD3' },
   pinWrap: {
     position: 'absolute',
     width: 0,
@@ -173,4 +179,12 @@ const styles = StyleSheet.create({
   },
 });
 
-export default WorldMap;
+// Seconds update the clock rows several times per second. The map only needs
+// to change when the minute/selection changes, avoiding a visible image blink.
+export default React.memo(WorldMap, (prev, next) => {
+  const prevMinute = prev.date ? Math.floor(prev.date.getTime() / 60000) : 0;
+  const nextMinute = next.date ? Math.floor(next.date.getTime() / 60000) : 0;
+  return prevMinute === nextMinute
+    && prev.selectedId === next.selectedId
+    && prev.cities === next.cities;
+});

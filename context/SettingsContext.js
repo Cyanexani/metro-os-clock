@@ -9,6 +9,9 @@ const DEFAULTS = {
   weekStartsMonday: false,
   vibrateOnAlarm: true,
   batteryPromptShown: false,
+  // World clock "Date display": 'relative' = Yesterday/Today/Tomorrow,
+  // 'weekday' = Day of Week (Monday). Ref 012554.
+  dateDisplay: 'relative',
 };
 
 const SettingsContext = createContext({

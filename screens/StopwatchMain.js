@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { StyleSheet, View, Text, ScrollView, Pressable, AppState } from "react-native";
+import { StyleSheet, View, Text, ScrollView, Pressable, AppState, Dimensions } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fonts } from "../styles/fonts";
 
@@ -12,17 +12,14 @@ const formatElapsed = (ms) => {
   const sec = totalSec % 60;
   const totalMin = Math.floor(totalSec / 60);
   const pad = (n, w = 2) => String(n).padStart(w, "0");
-  
+
   if (totalMin >= 60) {
-    const hrs = Math.floor(totalMin / 60);
     return {
-      main: `${pad(hrs)}:${pad(totalMin % 60)}:${pad(sec)}`,
-      cs: pad(cs),
+      main: `${pad(Math.floor(totalMin / 60))}:${pad(totalMin % 60)}:${pad(sec)}.${pad(cs)}`,
     };
   }
   return {
-    main: `${pad(totalMin)}:${pad(sec)}`,
-    cs: pad(cs),
+    main: `${pad(totalMin)}:${pad(sec)}:${pad(cs)}`,
   };
 };
 
@@ -105,7 +102,7 @@ const StopwatchMain = () => {
     }
   };
 
-  const { main, cs } = formatElapsed(elapsed);
+  const { main } = formatElapsed(elapsed);
   
   const lapSplits = laps.map(l => l.split);
   const minSplit = laps.length >= 2 ? Math.min(...lapSplits) : -1;
@@ -114,9 +111,25 @@ const StopwatchMain = () => {
   return (
     <View style={styles.container}>
       <View style={styles.displayContainer}>
-        <View style={styles.timeRow}>
-          <Text style={[styles.mainText, fonts.extraLight]}>{main}</Text>
-          <Text style={[styles.csText, fonts.extraLight]}>.{cs}</Text>
+        <View style={styles.timeRing}>
+          <View style={styles.timeRow}>
+            <Text style={[styles.mainText, fonts.extraLight]}>{main}</Text>
+          </View>
+        </View>
+        <View style={styles.controlRow}>
+          <Pressable
+            style={({ pressed }) => [styles.controlButton, { opacity: (!running && elapsed === 0) ? 0.3 : (pressed ? 0.5 : 1) }]}
+            onPress={handleResetOrLap}
+            disabled={!running && elapsed === 0}
+          >
+            <Text style={[styles.controlText, fonts.regular]}>{running ? 'lap' : 'reset'}</Text>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [styles.controlButton, { opacity: pressed ? 0.5 : 1 }]}
+            onPress={handleStartStop}
+          >
+            <Text style={[styles.controlText, fonts.regular]}>{running ? 'stop' : 'start'}</Text>
+          </Pressable>
         </View>
       </View>
 
@@ -148,48 +161,32 @@ const StopwatchMain = () => {
                 lap {lap.id}
               </Text>
               <Text style={[styles.lapSplit, fonts.regular, { color: rowColor }]}>
-                {lapFmt.main}.{lapFmt.cs}
+                {lapFmt.main}
               </Text>
             </View>
           );
         })}
       </ScrollView>
 
-      <View style={styles.appBar}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.appBarButton,
-            { opacity: (!running && elapsed === 0) ? 0.3 : (pressed ? 0.5 : 1) }
-          ]}
-          onPress={handleResetOrLap}
-          disabled={!running && elapsed === 0}
-        >
-          <Text style={[styles.appBarButtonText, fonts.regular]}>
-            {running ? "lap" : "reset"}
-          </Text>
-        </Pressable>
-        <Pressable
-          style={({ pressed }) => [
-            styles.appBarButton,
-            { opacity: pressed ? 0.5 : 1 }
-          ]}
-          onPress={handleStartStop}
-        >
-          <Text style={[styles.appBarButtonText, fonts.regular]}>
-            {running ? "stop" : "start"}
-          </Text>
-        </Pressable>
-      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "black", width: "100%" },
-  displayContainer: { marginTop: "20%", alignItems: "center", marginBottom: 20 },
+  displayContainer: { marginTop: "27%", alignItems: "center", marginBottom: 20 },
+  timeRing: {
+    width: Math.min(330, Dimensions.get('window').width - 54),
+    height: Math.min(330, Dimensions.get('window').width - 54),
+    borderRadius: 200,
+    borderWidth: 5,
+    borderColor: '#0078D7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   timeRow: { flexDirection: "row", alignItems: "baseline" },
-  mainText: { fontSize: 72, color: "white", includeFontPadding: false },
-  csText: { fontSize: 72, color: "white", includeFontPadding: false },
+  mainText: { fontSize: 46, color: "white", includeFontPadding: false, letterSpacing: -1 },
+  csText: { display: 'none' },
   lapsContainer: { flex: 1, marginHorizontal: 24 },
   lapsContent: { paddingBottom: 80 },
   lapRow: { 
@@ -199,20 +196,21 @@ const styles = StyleSheet.create({
   },
   lapIndex: { fontSize: 14 },
   lapSplit: { fontSize: 16 },
-  appBar: {
-    height: 64,
-    backgroundColor: "#111111",
+  controlRow: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
+    justifyContent: "center",
+    gap: 12,
+    marginTop: 92,
   },
-  appBarButton: {
+  controlButton: {
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
     paddingHorizontal: 20,
     paddingVertical: 10,
-    minWidth: 80,
+    minWidth: 94,
     alignItems: "center",
   },
-  appBarButtonText: {
+  controlText: {
     color: "white",
     fontSize: 14,
   },

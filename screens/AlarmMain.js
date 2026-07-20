@@ -1,23 +1,20 @@
 import React, { useState, useEffect, useRef } from "react";
-import { StyleSheet, View, Text, FlatList, Modal, TextInput, ScrollView, Vibration, Pressable } from "react-native";
+import { StyleSheet, View, Text, FlatList, Modal, Vibration } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { Audio } from 'expo-av';
 import { fonts } from "../styles/fonts";
 import { useSettings } from "../context/SettingsContext";
-import ToggleSwitch from "../components/core/ToggleSwitch";
 import MetroTouchable from "../components/core/MetroTouchable";
-import TimePicker from "../components/core/TimePicker";
 import AddAlarmBottomBar from "../components/compound/AddAlarmBottomBar";
-import { RINGTONES, DEFAULT_RINGTONE, getRingtone } from "../data/ringtones";
+import AlarmListItem from "../components/compound/AlarmListItem";
+import AlarmEditorPage from "./alarm/AlarmEditorPage";
+import { TimePickerPage, RepeatsPage } from "./alarm/AlarmSubPages";
+import { DEFAULT_RINGTONE, getRingtone } from "../data/ringtones";
 import RingtoneScreen from "./RingtoneScreen";
 
 const STORAGE_KEY = '@metro_alarms';
-const ACCENT = '#0078D7';
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const HOUR_VALUES = ['12', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11'];
-const MINUTE_VALUES = new Array(60).fill(0).map((_, i) => String(i).padStart(2, '0'));
-const AMPM_VALUES = ['AM', 'PM'];
 const SNOOZE_MINUTES = 5;
 
 // Alarms are stored with numeric hour24/minute so triggering never depends on
@@ -77,6 +74,7 @@ export default function AlarmMain({ navigation }) {
 
   // Editor state (add + edit share the modal)
   const [isEditorVisible, setEditorVisible] = useState(false);
+  const [subPage, setSubPage] = useState(null); // null | 'time' | 'repeats'
   const [showRingtoneSheet, setShowRingtoneSheet] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [draftHour24, setDraftHour24] = useState(8);
@@ -330,6 +328,7 @@ export default function AlarmMain({ navigation }) {
     setDraftRepeat([]);
     setDraftSound(DEFAULT_RINGTONE);
     setDraftSnooze(true);
+    setSubPage(null);
     setEditorVisible(true);
   };
 
@@ -341,6 +340,7 @@ export default function AlarmMain({ navigation }) {
     setDraftRepeat(alarm.repeat);
     setDraftSound(alarm.sound || DEFAULT_RINGTONE);
     setDraftSnooze(alarm.snooze !== false);
+    setSubPage(null);
     setEditorVisible(true);
   };
 
@@ -360,6 +360,7 @@ export default function AlarmMain({ navigation }) {
       setAlarms(prev => [...prev, { id: Date.now().toString(), ...draft }]);
     }
     stopPreview();
+    setSubPage(null);
     setEditorVisible(false);
   };
 
@@ -400,44 +401,14 @@ export default function AlarmMain({ navigation }) {
     setRingingAlarm(null);
   };
 
-  // The draft hour picker works in 12-hour units; AM/PM is a separate picker.
-  const draftHour12Index = draftHour24 % 12;
-  const draftIsPm = draftHour24 >= 12;
-  const setDraftHour12 = (index) => setDraftHour24(index + (draftIsPm ? 12 : 0));
-  const setDraftAmpm = (index) => setDraftHour24((draftHour24 % 12) + (index === 1 ? 12 : 0));
-
   const renderItem = ({ item: a }) => (
-    <View style={[styles.itemContainer, styles.itemRow]}>
-      <MetroTouchable
-        style={itemStyles.infoContainer}
-        onPress={() => openEdit(a)}
-        onLongPress={() => deleteAlarm(a.id)}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-          <Text style={[itemStyles.time, fonts.extraLight, !a.enabled && itemStyles.dimmed]}>
-            {formatTime(a.hour24, a.minute, settings.use24Hour)}
-          </Text>
-          {!settings.use24Hour && (
-            <Text style={[itemStyles.ampm, fonts.regular, !a.enabled && itemStyles.dimmed]}>
-              {' '}{a.hour24 >= 12 ? 'PM' : 'AM'}
-            </Text>
-          )}
-        </View>
-        <Text style={[itemStyles.name, fonts.regular, !a.enabled && itemStyles.dimmed]}>
-          {a.name.toLowerCase()}
-        </Text>
-        <Text style={[itemStyles.repeat, fonts.regular, !a.enabled && itemStyles.dimmed]}>
-          {formatRepeat(a.repeat)}
-        </Text>
-      </MetroTouchable>
-      <View style={itemStyles.toggleSwitch}>
-        <ToggleSwitch
-          isOn={a.enabled}
-          onToggle={() => toggleAlarm(a.id)}
-          toggleOnColor={ACCENT}
-        />
-      </View>
-    </View>
+    <AlarmListItem
+      alarm={a}
+      use24Hour={settings.use24Hour}
+      onPress={() => openEdit(a)}
+      onLongPress={() => deleteAlarm(a.id)}
+      onToggle={() => toggleAlarm(a.id)}
+    />
   );
 
   return (
@@ -455,105 +426,44 @@ export default function AlarmMain({ navigation }) {
         <AddAlarmBottomBar navigation={navigation} methods={{ addAlarm: openAdd, deleteAll: () => setAlarms([]) }} />
       </View>
 
-      {/* Add / Edit Alarm. Mounted only while open so the TimePickers pick up
-          the current draft as their initial selection. */}
+      {/* Add / Edit Alarm — full-screen WP page. Mounted only while open so the
+          pickers pick up the current draft. The Time and Repeats sub-pages
+          render over the editor. */}
       {isEditorVisible && (
-      <Modal visible={isEditorVisible} animationType="slide" transparent={true} onRequestClose={() => { stopPreview(); setEditorVisible(false); }}>
-        <View style={modalStyles.bottomSheetOuter}>
-          <View style={modalStyles.bottomSheetInner}>
-            <View style={modalStyles.dragIndicator} />
-            <ScrollView style={modalStyles.container} contentContainerStyle={modalStyles.content}>
-              <Text style={[modalStyles.title, fonts.light]}>
-            {editingId ? 'edit alarm' : 'add an alarm'}
-          </Text>
-
-          <View style={modalStyles.pickerRow}>
-            <TimePicker
-              values={HOUR_VALUES}
-              unit="h"
-              initialSelectedIndex={draftHour12Index}
-              selectionColor={ACCENT}
-              activeTextColor="white"
-              squareCount={3}
-              onValueChange={setDraftHour12}
+        <Modal visible={isEditorVisible} animationType="slide" onRequestClose={() => { stopPreview(); setSubPage(null); setEditorVisible(false); }}>
+          {subPage === 'time' ? (
+            <TimePickerPage
+              hour24={draftHour24}
+              minute={draftMinute}
+              onChange={(h, m) => { setDraftHour24(h); setDraftMinute(m); }}
+              onAccept={() => setSubPage(null)}
+              onCancel={() => setSubPage(null)}
             />
-            <TimePicker
-              values={MINUTE_VALUES}
-              unit="m"
-              initialSelectedIndex={draftMinute}
-              selectionColor={ACCENT}
-              activeTextColor="white"
-              squareCount={3}
-              onValueChange={(index) => setDraftMinute(index)}
+          ) : subPage === 'repeats' ? (
+            <RepeatsPage
+              repeat={draftRepeat}
+              onToggleDay={toggleDraftDay}
+              onAccept={() => setSubPage(null)}
+              onCancel={() => setSubPage(null)}
             />
-            <TimePicker
-              values={AMPM_VALUES}
-              initialSelectedIndex={draftIsPm ? 1 : 0}
-              selectionColor={ACCENT}
-              activeTextColor="white"
-              squareCount={3}
-              onValueChange={setDraftAmpm}
+          ) : (
+            <AlarmEditorPage
+              mode={editingId ? 'edit' : 'new'}
+              timeText={`${formatTime(draftHour24, draftMinute, settings.use24Hour)}${settings.use24Hour ? '' : ` ${draftHour24 >= 12 ? 'PM' : 'AM'}`}`}
+              repeatText={formatRepeat(draftRepeat)}
+              soundName={(getRingtone(draftSound)?.name || '').toLowerCase()}
+              name={draftName}
+              onChangeName={setDraftName}
+              snooze={draftSnooze}
+              onToggleSnooze={() => setDraftSnooze(!draftSnooze)}
+              onOpenTime={() => setSubPage('time')}
+              onOpenRepeats={() => setSubPage('repeats')}
+              onOpenSound={() => setShowRingtoneSheet(true)}
+              onSave={handleSave}
+              onCancel={() => { stopPreview(); setSubPage(null); setEditorVisible(false); }}
             />
-          </View>
-
-          <Text style={[modalStyles.fieldLabel, fonts.light]}>name</Text>
-          <TextInput
-            style={[modalStyles.nameInput, fonts.regular]}
-            value={draftName}
-            onChangeText={setDraftName}
-            placeholder="Alarm"
-            placeholderTextColor="#888"
-          />
-
-          <Text style={[modalStyles.fieldLabel, fonts.light]}>repeats</Text>
-          <View style={modalStyles.dayRow}>
-            {DAYS.map(day => {
-              const active = draftRepeat.includes(day);
-              return (
-                <Pressable
-                  key={day}
-                  style={[modalStyles.dayChip, active && modalStyles.dayChipActive]}
-                  onPress={() => toggleDraftDay(day)}
-                >
-                  <Text style={[modalStyles.dayChipText, fonts.regular, active && modalStyles.dayChipTextActive]}>
-                    {day.toLowerCase()}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <Pressable style={modalStyles.soundPickerRow} onPress={() => setShowRingtoneSheet(true)}>
-            <Text style={[modalStyles.fieldLabel, fonts.light, { marginBottom: 0 }]}>sound</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={[fonts.regular, { color: '#888', fontSize: 16, marginRight: 10 }]}>
-                {getRingtone(draftSound)?.name.toLowerCase()}
-              </Text>
-              <Text style={[fonts.regular, { color: '#888', fontSize: 20 }]}>›</Text>
-            </View>
-          </Pressable>
-
-          <View style={modalStyles.snoozeRow}>
-            <Text style={[modalStyles.fieldLabel, fonts.light, { marginBottom: 0 }]}>snooze</Text>
-            <ToggleSwitch
-              isOn={draftSnooze}
-              onToggle={() => setDraftSnooze(!draftSnooze)}
-              toggleOnColor={ACCENT}
-            />
-          </View>
-
-          <View style={modalStyles.buttonRow}>
-            <MetroTouchable style={modalStyles.actionButton} onPress={handleSave}>
-              <Text style={[modalStyles.actionText, fonts.regular]}>save</Text>
-            </MetroTouchable>
-            <MetroTouchable style={modalStyles.actionButton} onPress={() => { stopPreview(); setEditorVisible(false); }}>
-              <Text style={[modalStyles.actionText, fonts.regular]}>cancel</Text>
-            </MetroTouchable>
-          </View>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+          )}
+        </Modal>
       )}
 
       {showRingtoneSheet && (
@@ -595,8 +505,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "black", marginTop: 25 },
   list: { paddingBottom: 100 },
   emptyText: { color: '#888', fontSize: 18, marginStart: 20, marginTop: 30 },
-  itemContainer: { marginStart: 20, marginBottom: 25 },
-  itemRow: { flexDirection: "row", width: "100%" },
   bottomBarContainer: { width: "100%", position: 'absolute', bottom: 0, zIndex: 10 },
 
   ringingOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#004A87', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
@@ -606,36 +514,4 @@ const styles = StyleSheet.create({
   ringingButtons: { flexDirection: 'row', marginTop: 50 },
   ringingButton: { borderColor: 'white', borderWidth: 2, paddingHorizontal: 30, paddingVertical: 12, marginHorizontal: 10 },
   ringingButtonText: { color: 'white', fontSize: 18 },
-});
-
-const itemStyles = StyleSheet.create({
-  infoContainer: { flex: 2 },
-  time: { color: "white", fontSize: 48, marginBottom: -5, includeFontPadding: false },
-  ampm: { fontSize: 18 },
-  name: { color: "#ccc", fontSize: 16 },
-  repeat: { color: "#888", fontSize: 14 },
-  dimmed: { color: '#555' },
-  toggleSwitch: { flexDirection: "row", flex: 1, justifyContent: 'flex-end', margin: 16, marginRight: 40 },
-});
-
-const modalStyles = StyleSheet.create({
-  bottomSheetOuter: { flex: 1, backgroundColor: 'black' },
-  bottomSheetInner: { flex: 1, backgroundColor: 'black' },
-  dragIndicator: { display: 'none' },
-  container: { backgroundColor: 'transparent' },
-  content: { paddingTop: 40, paddingHorizontal: 20, paddingBottom: 40 },
-  title: { color: 'white', fontSize: 42, letterSpacing: 0, marginBottom: 30, marginLeft: -2 },
-  pickerRow: { flexDirection: 'row', justifyContent: 'center', marginBottom: 30 },
-  fieldLabel: { color: '#888', fontSize: 16, marginBottom: 5 },
-  nameInput: { color: 'white', fontSize: 24, borderBottomWidth: 2, borderBottomColor: '#333', paddingVertical: 8, marginBottom: 30 },
-  dayRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 40 },
-  soundPickerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 40 },
-  dayChip: { borderWidth: 2, borderColor: '#333', paddingHorizontal: 10, paddingVertical: 8, marginRight: 8, marginBottom: 8 },
-  dayChipActive: { backgroundColor: ACCENT, borderColor: ACCENT },
-  dayChipText: { color: '#888', fontSize: 14 },
-  dayChipTextActive: { color: 'white' },
-  snoozeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 40 },
-  buttonRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  actionButton: { flex: 1, alignItems: 'center', padding: 16, marginHorizontal: 5, backgroundColor: '#222' },
-  actionText: { color: 'white', fontSize: 18 },
 });

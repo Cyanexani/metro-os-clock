@@ -11,7 +11,10 @@ import { View, StyleSheet, Dimensions, TouchableOpacity, Text } from "react-nati
 import { fonts } from "../../styles/fonts";
 
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("screen");
+// `window` excludes the system bars. Using `screen` here made every page
+// roughly one navigation-bar taller and let transformed content overlap the
+// next screen on Android.
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 // slightly smaller snap to value to make the next screen peep out
 // Normal value is 20. Making it 0 for testing. 
@@ -178,17 +181,20 @@ const styles = StyleSheet.create({
   container: {
     paddingTop: 0,
     backgroundColor: "black",
+    flex: 1,
+    overflow: 'hidden',
   },
   appTitle: {
     color: 'white',
     fontFamily: 'selawikLight',
-    fontSize: 34,
+    fontSize: 38,
     paddingLeft: 20,
-    paddingTop: 10,
+    paddingTop: 12,
+    lineHeight: 44,
     textTransform: 'lowercase',
   },
   screenContainer: {
-    height: SCREEN_HEIGHT - 170, // account for container padding top (120 original)
+    height: SCREEN_HEIGHT - 164, // title + tab strip + bottom app bar
   },
   screenList: {
     paddingEnd: 20,
@@ -196,13 +202,14 @@ const styles = StyleSheet.create({
   tabContainer: {
     flexDirection: "row",
     backgroundColor: "transparent",
-    paddingTop: 4,
-    paddingBottom: 4,
+    paddingTop: 2,
+    paddingBottom: 6,
   },
   tabText: {
     paddingRight: 10,
     paddingLeft: 20,
-    fontSize: 50,
+    fontSize: 48,
+    lineHeight: 54,
   },
 });
 
