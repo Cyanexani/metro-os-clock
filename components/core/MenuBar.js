@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import RoundedButton from './RoundedButton';
 import { fonts } from '../../styles/fonts';
 
-const BAR_COLOR = '#111111';
+const BAR_COLOR = '#292929';
 
 const OverflowDots = ({ onPress }) => (
   <Pressable style={styles.dotsHit} onPress={onPress} hitSlop={8}>
@@ -45,23 +45,6 @@ export const QuickMenu = ({ options, overflow = [] }) => {
 
   return (
     <View style={styles.quickMenu}>
-      {expanded && hasOverflow ? (
-        <View style={styles.overflowPanel}>
-          {overflow.map(item => (
-            <Pressable
-              key={item.text}
-              style={({ pressed }) => [styles.overflowItem, pressed && styles.pressed]}
-              onPress={() => {
-                setExpanded(false);
-                item.onPress && item.onPress();
-              }}
-            >
-              <Text style={[styles.overflowText, fonts.light]}>{item.text}</Text>
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
-
       <View style={styles.quickRow}>
         <View style={styles.actionArea}>
           {options.map(option => (
@@ -79,6 +62,23 @@ export const QuickMenu = ({ options, overflow = [] }) => {
           <OverflowDots onPress={() => setExpanded(value => !value)} />
         ) : null}
       </View>
+
+      {expanded && hasOverflow ? (
+        <View style={styles.overflowPanel}>
+          {overflow.map(item => (
+            <Pressable
+              key={item.text}
+              style={({ pressed }) => [styles.overflowItem, pressed && styles.pressed]}
+              onPress={() => {
+                setExpanded(false);
+                item.onPress && item.onPress();
+              }}
+            >
+              <Text style={[styles.overflowText, fonts.light]}>{item.text}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 };
@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
   dotsHit: { position: 'absolute', right: 0, bottom: 0, width: 72, height: 72, alignItems: 'center', justifyContent: 'center' },
   dotsRow: { flexDirection: 'row', gap: 4 },
   dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: 'white' },
-  overflowPanel: { backgroundColor: BAR_COLOR, paddingTop: 6, paddingBottom: 8 },
+  overflowPanel: { backgroundColor: BAR_COLOR, paddingTop: 0, paddingBottom: 10 },
   overflowItem: { paddingHorizontal: 22, paddingVertical: 12 },
   overflowText: { color: 'white', fontSize: 20, textTransform: 'lowercase' },
   pressed: { opacity: 0.55 },

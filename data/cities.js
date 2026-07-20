@@ -107,6 +107,7 @@ const RAW = [
   ['Chicago, IL, USA', 'America/Chicago', 41.88, -87.63],
   ['Denver, CO, USA', 'America/Denver', 39.74, -104.99],
   ['Los Angeles, CA, USA', 'America/Los_Angeles', 34.05, -118.24],
+  ['San Francisco, CA, USA', 'America/Los_Angeles', 37.77, -122.42],
   ['Seattle, WA, USA', 'America/Los_Angeles', 47.61, -122.33],
   ['Anchorage, AK, USA', 'America/Anchorage', 61.22, -149.90],
   ['Honolulu, HI, USA', 'Pacific/Honolulu', 21.31, -157.86],

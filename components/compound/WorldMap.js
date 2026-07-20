@@ -18,7 +18,10 @@ const WorldMap = ({
   mapAnimatedStyle,
 }) => {
   return (
-    // A static clip is required around the transformed map on Android.
+    // The clipping layer spans the clock canvas. The map itself starts as a
+    // shallow strip; zooming scales that strip behind the clock rows, exactly
+    // like the WP7 reference, while the page boundary clips the transformed
+    // image away from adjacent pivot screens.
     <View style={styles.clipViewport} pointerEvents="none" collapsable={false}>
       <Animated.View style={[styles.mapBox, mapAnimatedStyle]}>
         {/* Ocean base */}
@@ -43,14 +46,19 @@ const WorldMap = ({
             </View>
           );
         })}
+
+        {/* The source PNG includes Antarctica, while the WP7 artwork ends in
+            the southern ocean. Masking that band also restores the map's
+            wide, shallow silhouette instead of vertically crushing it. */}
+        <View style={styles.southernOceanMask} />
       </Animated.View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  clipViewport: { width: '100%', height: MAP_DISPLAY_H, overflow: 'hidden', backgroundColor: '#000000' },
-  mapBox: { width: '100%', height: MAP_DISPLAY_H, overflow: 'hidden', backgroundColor: '#000000' },
+  clipViewport: { ...StyleSheet.absoluteFillObject, overflow: 'hidden', backgroundColor: '#000000' },
+  mapBox: { width: '100%', height: MAP_DISPLAY_H, backgroundColor: '#000000' },
   ocean: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000000' },
   // tintColor recolors the gray land silhouette to the WP lit-land near-white.
   landImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%', tintColor: '#DDE3E8' },
@@ -80,8 +88,16 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     marginLeft: -5,
     marginTop: -5,
-    backgroundColor: '#4FA3FF',
-    shadowColor: '#4FA3FF',
+    backgroundColor: 'white',
+    shadowColor: 'white',
+  },
+  southernOceanMask: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '16.6%',
+    backgroundColor: '#000000',
   },
 });
 

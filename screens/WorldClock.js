@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, FlatList, Modal, Pressable } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fonts } from '../styles/fonts';
@@ -12,6 +12,7 @@ import useMapZoom, { MAP_DISPLAY_H } from '../components/compound/useMapZoom';
 import { CITY_DATABASE } from '../data/cities';
 
 const STORAGE_KEY = '@world_clock_cities';
+const LOCAL_CITY_ID = '__local_city__';
 
 const timeFormatters = new Map();
 const dateFormatters = new Map();
@@ -108,9 +109,10 @@ export default function WorldClock({ navigation }) {
         } else {
           const pick = (id) => CITY_DATABASE.find(c => c.id === id);
           setMyCities([
-            pick('seattle-wa-usa'),
+            pick('san-francisco-ca-usa'),
+            pick('new-york-ny-usa'),
             pick('london-united-kingdom'),
-            pick('tokyo-japan'),
+            pick('moscow-russia'),
           ].filter(Boolean));
         }
       } catch (e) { }
@@ -175,19 +177,25 @@ export default function WorldClock({ navigation }) {
     : 'Local time';
   const localCityName = localDbCity ? localDbCity.name : prettifyZone(localTzInfo);
   const { time: localTimeText, ampm: localAmpm } = getFormattedTimeForTz(time, null, settings.use24Hour, settings.showSeconds);
+  const mapCities = useMemo(() => {
+    if (!localDbCity) return myCities;
+    const localCity = { ...localDbCity, id: LOCAL_CITY_ID };
+    return [localCity, ...myCities.filter(city => city.id !== localDbCity.id)];
+  }, [localDbCity, myCities]);
+  const localMapCity = mapCities[0]?.id === LOCAL_CITY_ID ? mapCities[0] : null;
 
   return (
     <View style={styles.container}>
-      {/* The pivot already says "world clock", so do not repeat the title over
-          the map. The map stays inside this fixed, clipped WP-style strip. */}
-      <Pressable style={styles.mapContainer} onPress={deselect}>
-        <WorldMap
-          cities={myCities}
-          selectedId={selectedId}
-          date={time}
-          mapAnimatedStyle={mapAnimatedStyle}
-        />
-      </Pressable>
+      {/* The pivot already supplies the title. The transformable map begins as
+          a top strip and expands behind the clock rows when a city is tapped. */}
+      <WorldMap
+        cities={mapCities}
+        selectedId={selectedId}
+        date={time}
+        mapAnimatedStyle={mapAnimatedStyle}
+      />
+
+      <Pressable style={styles.mapContainer} onPress={deselect} />
 
       {/* Local Time Header */}
       <WorldClockHeader
@@ -195,7 +203,8 @@ export default function WorldClock({ navigation }) {
         ampm={localAmpm}
         cityName={localCityName}
         dayText={settings.dateDisplay === 'weekday' ? getWeekdayForTz(time, null) : 'Today'}
-        dimmed={selectedId !== null}
+        dimmed={selectedId !== null && selectedId !== LOCAL_CITY_ID}
+        onPress={localMapCity ? () => selectCity(localMapCity) : undefined}
       />
 
       {/* Cities List */}
@@ -274,7 +283,7 @@ export default function WorldClock({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: 'black' },
 
-  mapContainer: { width: '100%', height: MAP_DISPLAY_H, backgroundColor: 'black', overflow: 'hidden' },
+  mapContainer: { width: '100%', height: MAP_DISPLAY_H, backgroundColor: 'transparent' },
 
   listContainer: { flex: 1 },
   listContent: { paddingBottom: 20 },

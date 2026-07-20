@@ -14,7 +14,7 @@ import { fonts } from "../../styles/fonts";
 // `window` excludes the system bars. Using `screen` here made every page
 // roughly one navigation-bar taller and let transformed content overlap the
 // next screen on Android.
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 // slightly smaller snap to value to make the next screen peep out
 // Normal value is 20. Making it 0 for testing. 
@@ -108,6 +108,7 @@ const MetroTabs = ({
       </Animated.View>
 
       <Animated.ScrollView
+        style={styles.pager}
         horizontal
         bounces={true}
         ref={animatedRef}
@@ -202,10 +203,12 @@ const styles = StyleSheet.create({
     textTransform: 'lowercase',
   },
   screenContainer: {
-    height: SCREEN_HEIGHT - 164, // title + tab strip + bottom app bar
+    height: '100%',
   },
+  pager: { flex: 1 },
   screenList: {
     paddingEnd: 20,
+    alignItems: 'stretch',
   },
   tabContainer: {
     flexDirection: "row",

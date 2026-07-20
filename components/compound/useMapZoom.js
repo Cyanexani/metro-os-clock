@@ -14,14 +14,17 @@ const ZOOM_MS = 450; // pan + zoom from idle
 const SWEEP_MS = 350; // lateral move between cities at the same zoom
 const RESET_MS = 400; // zoom back out
 
-// The WP map is a shallow strip, but a little taller than its source aspect on
-// modern narrow phones. Keep it bounded so it never consumes half the page.
+// The idle map in the video is a wide, shallow strip. Once transformed it is
+// allowed to spread behind the rows; this value only controls the unselected
+// silhouette and the focus line for selected city pins.
 const WIN = Dimensions.get('window');
 const VIEWPORT_W = WIN.width;
-export const MAP_DISPLAY_H = Math.round(Math.min(WIN.height * 0.31, WIN.width * 0.68));
+export const MAP_DISPLAY_H = Math.round(Math.min(WIN.height * 0.28, WIN.width * 0.54));
 const VIEWPORT_H = MAP_DISPLAY_H;
 
-// Translate the selected city to the centre of the clipped map viewport.
+// Keep the selected pin centred in the original top strip. The enlarged map
+// then naturally extends down behind the list instead of shifting the whole
+// continent to the vertical centre of the phone.
 const centreOn = (xPct, yPct, s) => {
   const px = (xPct / 100) * VIEWPORT_W;
   const py = (yPct / 100) * VIEWPORT_H;

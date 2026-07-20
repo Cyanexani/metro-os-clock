@@ -8,6 +8,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { fonts } from '../../styles/fonts';
 import AnimatedTime from './AnimatedTime';
+import MetroTouchable from '../core/MetroTouchable';
 
 const ACCENT = '#0078D7';
 const DIM_MS = 250;
@@ -16,7 +17,7 @@ const DIM_MS = 250;
 // overlaps the bottom edge of the world map, a small AM/PM, the current city
 // in accent blue, then the grey day line. When a list city is selected the
 // whole header recedes to 0.3 opacity like the unselected rows do.
-export default function WorldClockHeader({ timeText, ampm, cityName, dayText, dimmed }) {
+export default function WorldClockHeader({ timeText, ampm, cityName, dayText, dimmed, onPress }) {
   const opacity = useSharedValue(1);
 
   useEffect(() => {
@@ -30,12 +31,14 @@ export default function WorldClockHeader({ timeText, ampm, cityName, dayText, di
 
   return (
     <Animated.View style={[styles.container, dimStyle]}>
-      <View style={styles.timeRow}>
-        <AnimatedTime value={timeText} style={[styles.time, fonts.extraLight]} />
-        {ampm ? <Text style={[styles.ampm, fonts.regular]}>{ampm}</Text> : null}
-      </View>
-      <Text style={[styles.city, fonts.regular]}>{cityName}</Text>
-      <Text style={[styles.day, fonts.regular]}>{dayText || 'Today'}</Text>
+      <MetroTouchable style={styles.touchable} onPress={onPress} disabled={!onPress}>
+        <View style={styles.timeRow}>
+          <AnimatedTime value={timeText} style={[styles.time, fonts.extraLight]} />
+          {ampm ? <Text style={[styles.ampm, fonts.regular]}>{ampm}</Text> : null}
+        </View>
+        <Text style={[styles.city, fonts.regular]}>{cityName}</Text>
+        <Text style={[styles.day, fonts.regular]}>{dayText || 'Today'}</Text>
+      </MetroTouchable>
     </Animated.View>
   );
 }
@@ -44,6 +47,7 @@ const styles = StyleSheet.create({
   // Negative top margin pulls the big digits up over the map's bottom edge,
   // as in the reference stills.
   container: { paddingHorizontal: 20, marginTop: -34, paddingBottom: 10 },
+  touchable: { width: '100%' },
   timeRow: { flexDirection: 'row', alignItems: 'baseline' },
   time: { color: 'white', fontSize: 84, includeFontPadding: false },
   ampm: { color: 'white', fontSize: 30, marginLeft: 10, textTransform: 'uppercase' },
