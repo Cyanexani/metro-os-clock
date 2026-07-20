@@ -34,3 +34,4 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 apk-out/
+dist-verify/
