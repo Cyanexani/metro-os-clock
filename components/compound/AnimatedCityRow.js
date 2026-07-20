@@ -10,6 +10,7 @@ import { fonts } from '../../styles/fonts';
 import MetroTouchable from '../core/MetroTouchable';
 import AnimatedTime from './AnimatedTime';
 
+const ACCENT = '#0078D7';
 const DIM_MS = 250;
 
 // A single World Clock city row. When another city is selected the row recedes
@@ -36,31 +37,35 @@ const AnimatedCityRow = ({
 
   const rowStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
-  // WP world clock list rows: white name, grey day line, no accent, no offset.
-  // 'Today' is the default day label; a crossing shows Tomorrow/Yesterday.
-  const dayLabel = dayText ? dayText.charAt(0).toUpperCase() + dayText.slice(1) : 'Today';
-
   return (
     <Animated.View style={rowStyle}>
       <MetroTouchable style={styles.cityRow} onPress={onPress} onLongPress={onLongPress}>
-        <View style={styles.timeRow}>
-          <AnimatedTime value={timeText} style={[styles.cityTime, fonts.extraLight]} />
-          {ampm ? <Text style={[styles.cityAmpm, fonts.regular]}>{ampm}</Text> : null}
+        <View style={styles.cityRowLeft}>
+          <View style={styles.timeRow}>
+            <AnimatedTime value={timeText} style={[styles.cityTime, fonts.extraLight]} />
+            <Text style={[styles.cityAmpm, fonts.regular]}>{ampm}</Text>
+          </View>
+          <Text style={[styles.cityName, fonts.regular]}>{city.name.toLowerCase()}</Text>
+          {dayText ? <Text style={[styles.cityDay, fonts.regular]}>{dayText}</Text> : null}
         </View>
-        <Text style={[styles.cityName, fonts.regular]}>{city.name}</Text>
-        <Text style={[styles.cityDay, fonts.regular]}>{dayLabel}</Text>
+        <View style={styles.cityRowRight}>
+          <Text style={[styles.offsetText, fonts.regular]}>{offsetText}</Text>
+        </View>
       </MetroTouchable>
     </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
-  cityRow: { paddingHorizontal: 20, paddingVertical: 10 },
+  cityRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 15 },
+  cityRowLeft: { flex: 1 },
+  cityRowRight: { justifyContent: 'flex-start', alignItems: 'flex-end', paddingTop: 10 },
   timeRow: { flexDirection: 'row', alignItems: 'baseline' },
-  cityTime: { color: 'white', fontSize: 30, includeFontPadding: false },
-  cityAmpm: { color: 'white', fontSize: 14, marginLeft: 4, textTransform: 'uppercase' },
-  cityName: { color: 'white', fontSize: 16, marginTop: 1 },
-  cityDay: { color: '#8a8a8a', fontSize: 13 },
+  cityTime: { color: 'white', fontSize: 48, includeFontPadding: false },
+  cityAmpm: { color: 'white', fontSize: 18, marginLeft: 6 },
+  cityName: { color: 'white', fontSize: 16, marginTop: -2 },
+  cityDay: { color: '#888', fontSize: 14, marginTop: 2 },
+  offsetText: { color: ACCENT, fontSize: 14 },
 });
 
 export default AnimatedCityRow;
