@@ -18,7 +18,7 @@ export default function WorldClockAppBar({ onAdd, onOpenSettings, onReorder, reo
       <View style={styles.topRow}>
         <View style={styles.addWrap}>
           <MetroTouchable style={styles.circleBtn} onPress={onAdd}>
-            <Text style={styles.plus}>+</Text>
+            <Text style={[styles.plus, fonts.light]}>+</Text>
           </MetroTouchable>
           {expanded ? <Text style={[styles.addLabel, fonts.regular]}>add</Text> : null}
         </View>
@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
   topRow: { height: 65, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   addWrap: { alignItems: 'center' },
   circleBtn: { width: 44, height: 44, borderRadius: 22, borderWidth: 2.5, borderColor: INK, justifyContent: 'center', alignItems: 'center' },
-  plus: { color: INK, fontSize: 26, lineHeight: 30, fontWeight: '300' },
+  plus: { color: INK, fontSize: 26, lineHeight: 30 },
   addLabel: { color: INK, fontSize: 12, marginTop: 2 },
   dotsHit: { position: 'absolute', right: 8, top: 0, padding: 10 },
   dots: { color: INK, fontSize: 16, letterSpacing: 1 },

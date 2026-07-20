@@ -22,6 +22,8 @@ export default function App() {
     'selawikLight': require('./assets/fonts/selawkl.ttf'),
     'selawikRegular': require('./assets/fonts/selawk.ttf'),
     'selawikSemiLight': require('./assets/fonts/selawksl.ttf'),
+    'selawikSemibold': require('./assets/fonts/selawksb.ttf'),
+    'selawikBold': require('./assets/fonts/selawkb.ttf'),
   });
 
   if (!fontsLoaded) {

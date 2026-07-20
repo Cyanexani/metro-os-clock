@@ -3,7 +3,7 @@ import { fonts } from "../../styles/fonts"
 
 export const AppTitle = ({title}) => {
     return (
-        <Text style={[fonts.regular, styles.appTitleText]}>
+        <Text style={[fonts.semibold, styles.appTitleText]}>
             {title}
         </Text>
     )
@@ -17,6 +17,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textTransform: "uppercase",
     color: "white",
-    fontWeight: "bold",
     }
 })
