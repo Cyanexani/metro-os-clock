@@ -186,6 +186,9 @@ export default function AlarmMain({ navigation }) {
           name: 'Alarms',
           importance: Notifications.AndroidImportance.MAX,
           vibrationPattern: [500, 1000, 500, 1000],
+          sound: 'default',
+          bypassDnd: true,
+          lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
         });
       } catch (e) { }
     };
@@ -439,6 +442,7 @@ export default function AlarmMain({ navigation }) {
             <TimePickerPage
               hour24={draftHour24}
               minute={draftMinute}
+              use24Hour={settings.use24Hour}
               onChange={(h, m) => { setDraftHour24(h); setDraftMinute(m); }}
               onAccept={() => setSubPage(null)}
               onCancel={() => setSubPage(null)}

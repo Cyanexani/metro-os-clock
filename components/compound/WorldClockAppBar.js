@@ -7,8 +7,8 @@ import MetroTouchable from '../core/MetroTouchable';
 // dark circled + centred and dark ••• at the right. Tapping ••• expands the
 // same grey panel downward-in-place: the + gains an "add" label beneath it and
 // the overflow menu ("settings", "reorder list") lists in black text.
-const BAR_GREY = '#BEBEBE';
-const INK = '#1f1f1f';
+const BAR_GREY = '#1f1f1f';
+const INK = '#ffffff';
 
 export default function WorldClockAppBar({ onAdd, onOpenSettings, onReorder, reorderMode = false, onDoneReorder }) {
   const [expanded, setExpanded] = useState(false);

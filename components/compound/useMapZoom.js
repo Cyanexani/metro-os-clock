@@ -21,7 +21,8 @@ const RESET_MS = 400; // zoom back out
 // not the strip.
 const WIN = Dimensions.get('window');
 const VIEWPORT_W = WIN.width;
-export const MAP_DISPLAY_H = Math.round(WIN.height * 0.38);
+// Match the source image's aspect (1280x712) so land isn't stretched.
+export const MAP_DISPLAY_H = Math.round(WIN.width * (712 / 1280));
 const SCREEN_H = WIN.height;
 
 // Translate needed to bring a city's projected point to the SCREEN centre

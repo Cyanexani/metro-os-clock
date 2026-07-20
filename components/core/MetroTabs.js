@@ -85,7 +85,7 @@ const MetroTabs = ({
 
   return (
     <View style={styles.container}>
-      <Animated.Text style={styles.appTitle}>alarms & clock</Animated.Text>
+      <Animated.Text style={styles.appTitle}>CLOCK</Animated.Text>
       <Animated.View
         style={[
           styles.tabContainer, 
@@ -194,12 +194,11 @@ const styles = StyleSheet.create({
   },
   appTitle: {
     color: 'white',
-    fontFamily: 'selawikLight',
-    fontSize: 38,
+    fontFamily: 'selawikSemibold',
+    fontSize: 14,
+    letterSpacing: 1,
     paddingLeft: 20,
     paddingTop: 12,
-    lineHeight: 44,
-    textTransform: 'lowercase',
   },
   screenContainer: {
     height: SCREEN_HEIGHT - 164, // title + tab strip + bottom app bar

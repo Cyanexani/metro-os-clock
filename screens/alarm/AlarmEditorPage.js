@@ -69,14 +69,13 @@ export default function AlarmEditorPage({
             <Save stroke="white" width={20} height={20} />
           </MetroTouchable>
         </View>
-        <Text style={[styles.dots, fonts.regular]}>•••</Text>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#081109' },
+  page: { flex: 1, backgroundColor: 'black' },
   body: { flex: 1, paddingHorizontal: 20, paddingTop: 30 },
 
   overline: { color: '#bbb', fontSize: 13, letterSpacing: 2, textTransform: 'uppercase' },
@@ -91,9 +90,8 @@ const styles = StyleSheet.create({
 
   snoozeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
 
-  appBar: { height: 65, backgroundColor: '#0D190F', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderTopWidth: 1, borderTopColor: '#203022' },
+  appBar: { height: 65, backgroundColor: 'black', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderTopWidth: 1, borderTopColor: '#1a1a1a' },
   appBarButtons: { flexDirection: 'row' },
   circleBtn: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: 'white', justifyContent: 'center', alignItems: 'center', marginHorizontal: 12 },
   circleGlyph: { color: 'white', fontSize: 22, lineHeight: 26 },
-  dots: { position: 'absolute', right: 24, color: 'white', fontSize: 24 },
 });

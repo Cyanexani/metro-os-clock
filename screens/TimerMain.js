@@ -189,20 +189,7 @@ const TimerMain = ({
 
       <View style={styles.timerItemContainer}>
         <View style={styles.ringContainer}>
-          <Svg width={260} height={260} viewBox="0 0 260 260">
-            <Circle
-              cx="130"
-              cy="130"
-              r={circleRadius}
-              stroke="#0078D7"
-              strokeWidth="6"
-              fill="none"
-              strokeDasharray={circleCircumference}
-              strokeDashoffset={strokeDashoffset}
-              transform="rotate(-90 130 130)"
-            />
-          </Svg>
-          <View style={styles.numberContainerAbsolute}>
+          <View style={styles.numberRow}>
             <Text style={[styles.timerText, fonts.light]}>
               {String(Math.floor((currentSec / (60*60)) % 24)).padStart(2, '0')}
             </Text>
@@ -313,21 +300,16 @@ const styles = StyleSheet.create({
     ringContainer: {
       justifyContent: 'center',
       alignItems: 'center',
-      width: 260,
-      height: 260,
-      marginTop: 20,
     },
-    numberContainerAbsolute: {
-      position: 'absolute',
+    numberRow: {
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
       gap: 2,
     },
     buttonContainer: {
-      flex: 1,
       position: 'absolute',
-      bottom: 90,
+      bottom: 80,
       width: "100%",
       flexDirection: 'row',
       justifyContent: 'center',

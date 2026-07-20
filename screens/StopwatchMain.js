@@ -174,20 +174,15 @@ const StopwatchMain = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "black", width: "100%" },
-  displayContainer: { marginTop: "27%", alignItems: "center", marginBottom: 20 },
+  displayContainer: { flex: 1, alignItems: "center", justifyContent: "center", marginBottom: 20 },
   timeRing: {
-    width: Math.min(330, Dimensions.get('window').width - 54),
-    height: Math.min(330, Dimensions.get('window').width - 54),
-    borderRadius: 200,
-    borderWidth: 5,
-    borderColor: '#0078D7',
     alignItems: 'center',
     justifyContent: 'center',
   },
   timeRow: { flexDirection: "row", alignItems: "baseline" },
-  mainText: { fontSize: 46, color: "white", includeFontPadding: false, letterSpacing: -1 },
+  mainText: { fontSize: 64, color: "white", includeFontPadding: false, letterSpacing: -1 },
   csText: { display: 'none' },
-  lapsContainer: { flex: 1, marginHorizontal: 24 },
+  lapsContainer: { maxHeight: 220, marginHorizontal: 24 },
   lapsContent: { paddingBottom: 80 },
   lapRow: { 
     flexDirection: "row", 
@@ -200,7 +195,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     gap: 12,
-    marginTop: 92,
+    marginTop: 60,
   },
   controlButton: {
     borderWidth: 2,
