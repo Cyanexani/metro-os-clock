@@ -178,15 +178,18 @@ export default function WorldClock({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* World map with day/night terminator and city pins.
-          Tapping the map (away from the list) zooms back out. */}
+      {/* Full-screen map layer. Idle it occupies the top strip; selecting a
+          city zooms it across the entire screen BEHIND the header and rows
+          (refs 012512/012544). Touches pass through it. */}
+      <WorldMap
+        cities={myCities}
+        selectedId={selectedId}
+        date={time}
+        mapAnimatedStyle={mapAnimatedStyle}
+      />
+
+      {/* Strip-sized touch target: tapping the map area zooms back out. */}
       <Pressable style={styles.mapContainer} onPress={deselect}>
-        <WorldMap
-          cities={myCities}
-          selectedId={selectedId}
-          date={time}
-          mapAnimatedStyle={mapAnimatedStyle}
-        />
         <Text style={[styles.overline, fonts.regular]} pointerEvents="none">
           WORLD CLOCK
         </Text>
@@ -277,7 +280,7 @@ export default function WorldClock({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: 'black' },
 
-  mapContainer: { width: '100%', height: MAP_DISPLAY_H, backgroundColor: '#000000', overflow: 'hidden' },
+  mapContainer: { width: '100%', height: MAP_DISPLAY_H, backgroundColor: 'transparent' },
 
   overline: {
     position: 'absolute',

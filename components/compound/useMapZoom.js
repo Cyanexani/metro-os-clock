@@ -9,29 +9,31 @@ import {
 
 // Metro's ease-in-out for the map moves.
 const EASE = Easing.bezier(0.4, 0, 0.2, 1);
-const ZOOM_SCALE = 2.8;
+const ZOOM_SCALE = 3.2;
 const ZOOM_MS = 450; // pan + zoom from idle
 const SWEEP_MS = 350; // lateral move between cities at the same zoom
 const RESET_MS = 400; // zoom back out
 
-// The map is displayed full-width at a fixed height (~38% of the screen, per
-// the WP world-clock layout). Both this hook and WorldClock's mapContainer use
-// MAP_DISPLAY_H so the zoom-to-centre math matches the pixels on screen.
+// Idle, the map is a full-width strip (~38% of the screen) at the top. When a
+// city is selected the strip scales up until the map covers the WHOLE screen
+// and the city sits at the screen's centre, with the header/rows drawn over
+// it (refs 012512/012544). The zoom math therefore centres on the window,
+// not the strip.
 const WIN = Dimensions.get('window');
 const VIEWPORT_W = WIN.width;
 export const MAP_DISPLAY_H = Math.round(WIN.height * 0.38);
-const VIEWPORT_H = MAP_DISPLAY_H;
+const SCREEN_H = WIN.height;
 
-// Translate needed to bring a city's projected point to the viewport centre
-// when the map is scaled by `s` about its centre.
-//   screenOffset(v) = s * v + t   →   t = -s * v   to land v at centre.
-// If on-device the pan direction is inverted, this is the one line to flip.
+// Translate needed to bring a city's projected point to the SCREEN centre
+// when the strip is scaled by `s` about its own centre.
+//   screenPos(p) = stripCentre + s * (p - stripCentre) + t
+// Solve for t with screenPos = (W/2, SCREEN_H/2).
 const centreOn = (xPct, yPct, s) => {
-  const tx = (xPct / 100) * VIEWPORT_W;
-  const ty = (yPct / 100) * VIEWPORT_H;
+  const px = (xPct / 100) * VIEWPORT_W;
+  const py = (yPct / 100) * MAP_DISPLAY_H;
   return {
-    tx: -s * (tx - VIEWPORT_W / 2),
-    ty: -s * (ty - VIEWPORT_H / 2),
+    tx: -s * (px - VIEWPORT_W / 2),
+    ty: SCREEN_H / 2 - MAP_DISPLAY_H / 2 - s * (py - MAP_DISPLAY_H / 2),
   };
 };
 
