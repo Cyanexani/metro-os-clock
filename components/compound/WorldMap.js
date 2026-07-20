@@ -1,6 +1,5 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { View, Image, StyleSheet } from 'react-native';
-import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 import Animated from 'react-native-reanimated';
 import worldMap from '../../assets/world-map.png';
 import { lonToX, latToY } from '../../data/cities';
@@ -10,73 +9,15 @@ import { MAP_DISPLAY_H } from './useMapZoom';
 // lat 90..-90 → y). All positions are percentages of the map's own box so the
 // overlay stays aligned with the image at any rendered size.
 
-// ── Day/night terminator ───────────────────────────────────────────────────
-// Compute the subsolar point (where the sun is directly overhead) for `date`,
-// then trace the great-circle terminator as a lon→lat curve. The night side is
-// filled with a soft polygon. This is astronomical-grade enough to look right
-// without a dependency; it recomputes only when `date` changes (once on open).
-const buildTerminatorPath = (date) => {
-  const rad = Math.PI / 180;
-  const deg = 180 / Math.PI;
 
-  // Days since J2000.0
-  const julian = date.getTime() / 86400000 + 2440587.5;
-  const n = julian - 2451545.0;
-
-  // Sun's ecliptic longitude
-  const L = (280.46 + 0.9856474 * n) % 360;
-  const g = ((357.528 + 0.9856003 * n) % 360) * rad;
-  const lambda = (L + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * rad;
-
-  // Obliquity of the ecliptic
-  const epsilon = 23.439 * rad;
-
-  // Declination of the sun
-  const decl = Math.asin(Math.sin(epsilon) * Math.sin(lambda));
-
-  // Greenwich hour angle → subsolar longitude
-  const utcHours = date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600;
-  const subsolarLon = -15 * (utcHours - 12);
-
-  // For each longitude, the terminator latitude where the sun is on the horizon.
-  const tanDecl = Math.tan(decl);
-  const points = [];
-  for (let lon = -180; lon <= 180; lon += 2) {
-    const hourAngle = (lon - subsolarLon) * rad;
-    const lat = Math.atan(-Math.cos(hourAngle) / tanDecl) * deg;
-    points.push([lon, lat]);
-  }
-
-  // The hemisphere that is dark depends on the sign of the declination.
-  // Northern summer (decl > 0) → night is biased south → close the polygon
-  // over the SOUTH pole. (Closing over the wrong pole shades the day side.)
-  const nightIsNorth = decl > 0 ? false : true;
-  const capLat = nightIsNorth ? 90 : -90;
-
-  // Build an SVG path in percentage space, then close it over the dark pole.
-  let d = '';
-  points.forEach(([lon, lat], i) => {
-    const x = lonToX(lon);
-    const y = latToY(lat);
-    d += `${i === 0 ? 'M' : 'L'}${x.toFixed(3)},${y.toFixed(3)} `;
-  });
-  const yCap = latToY(capLat);
-  d += `L100,${yCap.toFixed(3)} L0,${yCap.toFixed(3)} Z`;
-  return d;
-};
-
+// `date` prop retained for API compatibility; the WP7 reference map is
+// uniformly lit — no day/night terminator.
 const WorldMap = ({
   cities = [],
   selectedId = null,
   date,
   mapAnimatedStyle,
 }) => {
-  const terminatorPath = useMemo(
-    () => buildTerminatorPath(date || new Date()),
-    // Recompute at most once per minute — the terminator barely moves.
-    [date ? Math.floor(date.getTime() / 60000) : 0]
-  );
-
   return (
     // Full-screen clipping layer behind the page content. Idle, the map strip
     // sits in the top MAP_DISPLAY_H; selecting a city scales it up so the map
@@ -91,16 +32,6 @@ const WorldMap = ({
         {/* Landmasses — the gray PNG tinted to the WP lit-land near-white */}
         <Image source={worldMap} style={styles.landImage} resizeMode="stretch" />
 
-        {/* Day/night terminator shadow, drawn in percentage viewBox space */}
-        <Svg style={StyleSheet.absoluteFill} viewBox="0 0 100 100" preserveAspectRatio="none">
-          <Defs>
-            <LinearGradient id="nightFade" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor="#050B16" stopOpacity="0.72" />
-              <Stop offset="1" stopColor="#050B16" stopOpacity="0.72" />
-            </LinearGradient>
-          </Defs>
-          <Path d={terminatorPath} fill="url(#nightFade)" />
-        </Svg>
 
         {/* City pins — glowing dots only, no text labels, per the reference
             stills. The wrapper is a zero-size point at the coordinate; the

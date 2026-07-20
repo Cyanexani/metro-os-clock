@@ -44,12 +44,9 @@ const MetroTabs = ({
     scrollViewX.value = event.contentOffset.x;
   });
 
-  const animatedTitleTransformStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ translateX: -(scrollViewX.value * 0.25) }]
-    };
-  });
-
+  // WP Pivot: the small app title is FIXED; only the pivot headers parallax.
+  // (A panorama-style 0.25x translate scrolled the title off-screen, leaving
+  // a lone "k" by the last tab.)
   const animatedHeaderTransformStyle = useAnimatedStyle(() => {
     return {
       transform: [{ translateX: -(scrollViewX.value * 0.6) }]
@@ -77,7 +74,7 @@ const MetroTabs = ({
 
   return (
     <View style={styles.container}>
-      <Animated.Text style={[styles.appTitle, animatedTitleTransformStyle]}>alarms & clock</Animated.Text>
+      <Animated.Text style={styles.appTitle}>alarms & clock</Animated.Text>
       <Animated.View
         style={[
           styles.tabContainer, 
