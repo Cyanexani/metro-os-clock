@@ -1,94 +1,102 @@
-import { useState } from "react";
-import { Pressable, ScrollView, Text, TouchableWithoutFeedback, View } from "react-native";
-import RoundedButton from "./RoundedButton";
-import { fonts } from "../../styles/fonts";
+import React, { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import RoundedButton from './RoundedButton';
+import { fonts } from '../../styles/fonts';
 
-const ShortMenu = ({ children, handleExpand }) => {
-    return (
-        <View className="bg-[#222222] h-14 w-full flex flex-row justify-between items-center">
-            {children }
-            <TouchableWithoutFeedback onPress={handleExpand}>
-                <View className="w-[15%] h-full items-start justify-center flex flex-row gap-1 pt-2">
-                    <View className="w-1 h-1 bg-white rounded-full" />
-                    <View className="w-1 h-1 bg-white rounded-full" />
-                    <View className="w-1 h-1 bg-white rounded-full" />
-                </View>
-            </TouchableWithoutFeedback>
+const BAR_COLOR = '#111111';
+
+const OverflowDots = ({ onPress }) => (
+  <Pressable style={styles.dotsHit} onPress={onPress} hitSlop={8}>
+    <View style={styles.dotsRow}>
+      <View style={styles.dot} />
+      <View style={styles.dot} />
+      <View style={styles.dot} />
+    </View>
+  </Pressable>
+);
+
+const ShortMenu = ({ children, handleExpand }) => (
+  <View style={styles.shortMenu}>
+    {children}
+    <OverflowDots onPress={handleExpand} />
+  </View>
+);
+
+export const MenuBar = ({ options, controls }) => {
+  const [expanded, setExpanded] = useState(false);
+
+  if (!expanded) {
+    return <ShortMenu handleExpand={() => setExpanded(true)}>{controls}</ShortMenu>;
+  }
+
+  return (
+    <View style={styles.menuBarExpanded}>
+      <ShortMenu handleExpand={() => setExpanded(false)}>{controls}</ShortMenu>
+      <ScrollView>
+        <View style={styles.menuOptions}>{options}</View>
+      </ScrollView>
+    </View>
+  );
+};
+
+export const QuickMenu = ({ options, overflow = [] }) => {
+  const [expanded, setExpanded] = useState(false);
+  const hasOverflow = overflow.length > 0;
+
+  return (
+    <View style={styles.quickMenu}>
+      {expanded && hasOverflow ? (
+        <View style={styles.overflowPanel}>
+          {overflow.map(item => (
+            <Pressable
+              key={item.text}
+              style={({ pressed }) => [styles.overflowItem, pressed && styles.pressed]}
+              onPress={() => {
+                setExpanded(false);
+                item.onPress && item.onPress();
+              }}
+            >
+              <Text style={[styles.overflowText, fonts.light]}>{item.text}</Text>
+            </Pressable>
+          ))}
         </View>
-    )
-}
+      ) : null}
 
-export const MenuBar = ({ options, controls, height=14 }) => {
-    const [expanded, setExpanded] = useState(false);
-    if (!expanded) {
-        return (
-            <ShortMenu handleExpand={() => setExpanded(true)}>
-                {controls}
-            </ShortMenu>
-        )
-    } else {
-        return ( 
-            <View className={`bg-[#222222] h-2/5 w-full flex flex-col`}>
-                <ShortMenu handleExpand={() => setExpanded(false)}>
-                    {controls}
-                </ShortMenu>
-                <ScrollView className="w-full h-full">
-                    <View className="flex flex-col gap-16 mx-4 w-full my-4">
-                        {/* sadly there is no gap in react-native yet */}
-                        {options}
-                    </View>
-                </ScrollView>
-            </View>
-        );   
-    }
-}
-
-
-export const QuickMenu = ({
-    options,
-    overflow = []
-}) => {
-    const [expanded, setExpanded] = useState(false);
-    const hasOverflow = overflow.length > 0;
-    return (
-        <View className="flex flex-col w-full bg-black/90">
-            {expanded && hasOverflow && (
-                <View className="w-full flex flex-col pb-2">
-                    {overflow.map((item) => (
-                        <TouchableWithoutFeedback
-                            key={item.text}
-                            onPress={() => { setExpanded(false); item.onPress && item.onPress(); }}
-                        >
-                            <View className="w-full px-6 py-3">
-                                <Text className="text-white text-xl lowercase" style={fonts.light}>{item.text}</Text>
-                            </View>
-                        </TouchableWithoutFeedback>
-                    ))}
-                </View>
-            )}
-            <View className={`flex flex-row w-full ${expanded && hasOverflow ? 'h-[100px]' : 'h-[72px]'} items-center`}>
-                <View className="flex-1 flex-row justify-center items-start pt-3">
-                    {options.map((option) => (
-                        <Pressable key={option.text} onPress={option.onPress} hitSlop={12}>
-                            <View className="flex flex-col items-center mx-4">
-                                <RoundedButton Icon={option.Icon} />
-                                {expanded && hasOverflow && (
-                                    <Text className="text-white text-xs mt-2 lowercase" style={fonts.light}>{option.text}</Text>
-                                )}
-                            </View>
-                        </Pressable>
-                    ))}
-                </View>
-                {hasOverflow && (
-                    <TouchableWithoutFeedback onPress={() => setExpanded(!expanded)}>
-                        <View className="absolute right-4 bottom-0 h-[72px] justify-center flex-row gap-1 items-center px-4">
-                            <View className="w-1.5 h-1.5 bg-white rounded-full" />
-                            <View className="w-1.5 h-1.5 bg-white rounded-full" />
-                            <View className="w-1.5 h-1.5 bg-white rounded-full" />
-                        </View>
-                    </TouchableWithoutFeedback>
-                )}
-            </View>
+      <View style={styles.quickRow}>
+        <View style={styles.actionArea}>
+          {options.map(option => (
+            <Pressable key={option.text} onPress={option.onPress} hitSlop={10}>
+              <View style={styles.action}>
+                <RoundedButton Icon={option.Icon} />
+                {expanded && hasOverflow ? (
+                  <Text style={[styles.actionLabel, fonts.light]}>{option.text}</Text>
+                ) : null}
+              </View>
+            </Pressable>
+          ))}
         </View>
-    )
-}
+        {hasOverflow ? (
+          <OverflowDots onPress={() => setExpanded(value => !value)} />
+        ) : null}
+      </View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  quickMenu: { width: '100%', backgroundColor: BAR_COLOR },
+  quickRow: { height: 72, flexDirection: 'row', alignItems: 'center' },
+  actionArea: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+  action: { alignItems: 'center', marginHorizontal: 16 },
+  actionLabel: { color: 'white', fontSize: 12, marginTop: 2, textTransform: 'lowercase' },
+  dotsHit: { position: 'absolute', right: 0, bottom: 0, width: 72, height: 72, alignItems: 'center', justifyContent: 'center' },
+  dotsRow: { flexDirection: 'row', gap: 4 },
+  dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: 'white' },
+  overflowPanel: { backgroundColor: BAR_COLOR, paddingTop: 6, paddingBottom: 8 },
+  overflowItem: { paddingHorizontal: 22, paddingVertical: 12 },
+  overflowText: { color: 'white', fontSize: 20, textTransform: 'lowercase' },
+  pressed: { opacity: 0.55 },
+  shortMenu: { height: 56, width: '100%', backgroundColor: '#222222', flexDirection: 'row', alignItems: 'center' },
+  menuBarExpanded: { width: '100%', maxHeight: '40%', backgroundColor: '#222222' },
+  menuOptions: { paddingHorizontal: 16, paddingVertical: 16 },
+});

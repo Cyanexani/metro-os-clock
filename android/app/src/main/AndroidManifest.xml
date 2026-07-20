@@ -26,6 +26,7 @@
   <!-- Allow running foreground service for alarm sound -->
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+  <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
   <!-- Let the app ask to be exempt from battery optimization / Doze -->
   <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
 
@@ -91,6 +92,24 @@
     </activity>
 
     <activity android:name="com.facebook.react.devsupport.DevSettingsActivity" android:exported="false"/>
+
+    <activity
+      android:name=".AlarmRingingActivity"
+      android:exported="false"
+      android:excludeFromRecents="true"
+      android:launchMode="singleTop"
+      android:showWhenLocked="true"
+      android:turnScreenOn="true"
+      android:theme="@style/AlarmTheme"/>
+
+    <service
+      android:name=".AlarmRingService"
+      android:exported="false"
+      android:foregroundServiceType="mediaPlayback"/>
+
+    <receiver
+      android:name=".AlarmReceiver"
+      android:exported="false"/>
 
     <!-- ── Metro Clock home-screen widget ── -->
     <receiver

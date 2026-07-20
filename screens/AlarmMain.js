@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { StyleSheet, View, Text, FlatList, Modal, Vibration } from "react-native";
+import { StyleSheet, View, Text, FlatList, Modal, NativeModules, Platform, Vibration } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { Audio } from 'expo-av';
@@ -16,6 +16,7 @@ import RingtoneScreen from "./RingtoneScreen";
 const STORAGE_KEY = '@metro_alarms';
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const SNOOZE_MINUTES = 5;
+const nativeAlarm = Platform.OS === 'android' ? NativeModules.MetroAlarm : null;
 
 // Alarms are stored with numeric hour24/minute so triggering never depends on
 // string formatting. Older builds stored { time: '08:00', ampm: 'AM', state }.
@@ -162,7 +163,15 @@ export default function AlarmMain({ navigation }) {
       try {
         const saved = await AsyncStorage.getItem(STORAGE_KEY);
         if (saved !== null) {
-          setAlarms(JSON.parse(saved).map(migrateAlarm).filter(Boolean));
+          let loadedAlarms = JSON.parse(saved).map(migrateAlarm).filter(Boolean);
+          if (nativeAlarm?.consumeFiredAlarmIds) {
+            const firedIds = await nativeAlarm.consumeFiredAlarmIds();
+            const fired = new Set(firedIds || []);
+            loadedAlarms = loadedAlarms.map(alarm =>
+              fired.has(alarm.id) ? { ...alarm, enabled: false } : alarm
+            );
+          }
+          setAlarms(loadedAlarms);
         }
       } catch (e) { }
       setHasLoaded(true);
@@ -205,6 +214,10 @@ export default function AlarmMain({ navigation }) {
     const resync = async () => {
       try {
         await Notifications.cancelAllScheduledNotificationsAsync();
+        if (nativeAlarm) {
+          await nativeAlarm.syncAlarms(JSON.stringify(alarms));
+          return;
+        }
         for (const alarm of alarms) {
           if (!alarm.enabled) continue;
           const content = {
@@ -274,6 +287,10 @@ export default function AlarmMain({ navigation }) {
   // snooze/dismiss). Background ringing is covered by the scheduled
   // notifications above.
   useEffect(() => {
+    // Native AlarmManager owns Android ringing, including foreground, locked,
+    // background, and killed-app states. Avoid a second JS ringtone on top.
+    if (nativeAlarm) return undefined;
+
     const checkAlarms = () => {
       if (ringingRef.current) return;
       const now = new Date();

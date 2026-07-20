@@ -1,19 +1,17 @@
 import React, { useState, useEffect, useRef } from "react";
-import { StyleSheet, View, Dimensions, Text, Vibration, ScrollView } from "react-native";
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { StyleSheet, View, Dimensions, Text, Vibration } from "react-native";
 import { Audio } from 'expo-av';
 import Svg, { Circle } from 'react-native-svg';
 import Button from "../components/core/Button";
 import { fonts } from "../styles/fonts";
 import MetroTouchable from "../components/core/MetroTouchable";
-import MetroTile from "../components/core/MetroTile";
 import NewTimerBottomBar from "../components/compound/NewTimerBottomBar";
 import { getRingtone, DEFAULT_RINGTONE } from "../data/ringtones";
 import { useSettings } from "../context/SettingsContext";
 
-const SAVED_KEY = '@metro_saved_timers';
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("screen");
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const RING_SIZE = Math.min(330, SCREEN_WIDTH - 54);
+const RING_RADIUS = (RING_SIZE - 12) / 2;
 
 function useInterval(callback, intervalDelay) {
   const savedCallback = useRef();
@@ -49,8 +47,6 @@ const TimerMain = ({
   const [currentSec, setCurrentSec] = useState(0);
   const [delay, setDelay] = useState(null);
   const [finished, setFinished] = useState(false);
-  const [savedTimers, setSavedTimers] = useState([]);
-  const [savedLoaded, setSavedLoaded] = useState(false);
   const soundRef = useRef(null);
 
   const stopSound = async () => {
@@ -75,54 +71,6 @@ const TimerMain = ({
 
   // Clean up sound on unmount
   useEffect(() => () => { stopSound(); }, []);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(SAVED_KEY);
-        if (raw !== null) setSavedTimers(JSON.parse(raw));
-      } catch (e) { }
-      setSavedLoaded(true);
-    })();
-  }, []);
-
-  useEffect(() => {
-    if (savedLoaded) AsyncStorage.setItem(SAVED_KEY, JSON.stringify(savedTimers)).catch(() => { });
-  }, [savedTimers, savedLoaded]);
-
-  // A newly created timer arriving from TimerNew is remembered as a preset.
-  useEffect(() => {
-    const t = route.params?.timer;
-    if (!t) return;
-    const total = t.selectedHour * 3600 + t.selectedMinute * 60 + t.selectedSecond;
-    if (total <= 0) return;
-    setSavedTimers((prev) => {
-      if (prev.some((p) => p.total === total)) return prev;
-      return [...prev, { id: `${total}`, h: t.selectedHour, m: t.selectedMinute, s: t.selectedSecond, total }];
-    });
-  }, [route.params?.timer]);
-
-  const labelFor = (h, m, s) => {
-    const parts = [];
-    if (h) parts.push(`${h}h`);
-    if (m) parts.push(`${m}m`);
-    if (s) parts.push(`${s}s`);
-    return parts.join(' ') || '0s';
-  };
-
-  const loadPreset = (preset) => {
-    setDelay(null);
-    setFinished(false);
-    Vibration.cancel();
-    setSelectedHour(preset.h);
-    setSelectedMinute(preset.m);
-    setSelectedSecond(preset.s);
-    setCurrentSec(preset.total);
-  };
-
-  const removePreset = (id) => setSavedTimers((prev) => prev.filter((p) => p.id !== id));
-
-
 
   useEffect(() => {
     if (route.params?.timer) {
@@ -179,8 +127,7 @@ const TimerMain = ({
 
 
   const totalSec = (selectedHour*3600) + (selectedMinute*60) + selectedSecond;
-  const circleRadius = 120;
-  const circleCircumference = 2 * Math.PI * circleRadius;
+  const circleCircumference = 2 * Math.PI * RING_RADIUS;
   const progress = totalSec > 0 ? (currentSec / totalSec) : 1;
   const strokeDashoffset = circleCircumference - (progress * circleCircumference);
 
@@ -189,6 +136,28 @@ const TimerMain = ({
 
       <View style={styles.timerItemContainer}>
         <View style={styles.ringContainer}>
+          <Svg width={RING_SIZE} height={RING_SIZE} style={styles.ringSvg}>
+            <Circle
+              cx={RING_SIZE / 2}
+              cy={RING_SIZE / 2}
+              r={RING_RADIUS}
+              stroke="#143650"
+              strokeWidth={6}
+              fill="none"
+            />
+            <Circle
+              cx={RING_SIZE / 2}
+              cy={RING_SIZE / 2}
+              r={RING_RADIUS}
+              stroke="#0078D7"
+              strokeWidth={6}
+              fill="none"
+              strokeDasharray={circleCircumference}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+              transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}
+            />
+          </Svg>
           <View style={styles.numberRow}>
             <Text style={[styles.timerText, fonts.light]}>
               {String(Math.floor((currentSec / (60*60)) % 24)).padStart(2, '0')}
@@ -217,29 +186,6 @@ const TimerMain = ({
 
       </View>
 
-      {/* Saved timer presets as Metro tiles */}
-      {savedTimers.length > 0 && (
-        <View style={styles.savedContainer}>
-          <Text style={[styles.savedHeading, fonts.light]}>saved</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.savedRow}
-          >
-            {savedTimers.map((preset) => (
-              <MetroTile
-                key={preset.id}
-                size="small"
-                color="#0078D7"
-                label={labelFor(preset.h, preset.m, preset.s)}
-                onPress={() => loadPreset(preset)}
-                onLongPress={() => removePreset(preset.id)}
-              />
-            ))}
-          </ScrollView>
-        </View>
-      )}
-      
       {/* Bottom bar */}
       <View style={styles.bottomBarContainer}>
         <NewTimerBottomBar navigation={navigation} methods={
@@ -279,11 +225,7 @@ const styles = StyleSheet.create({
       backgroundColor: 'black',
       width: "100%",
       flexDirection: "column",
-      // Centre the ring in the free area above the app bar; the bar is
-      // absolutely positioned at the bottom, so reserve its height instead
-      // of shoving content down with top padding.
-      justifyContent: 'center',
-      paddingBottom: 65,
+      paddingBottom: 72,
     },
     bottomBarContainer: {
       width: "100%",
@@ -292,15 +234,20 @@ const styles = StyleSheet.create({
       flex: 1,
     },
     timerItemContainer: {
+      flex: 1,
       width: "100%",
       flexDirection: 'column',
       alignItems: 'center',
-      gap: 20,
+      justifyContent: 'center',
+      paddingBottom: 120,
     },
     ringContainer: {
       justifyContent: 'center',
       alignItems: 'center',
+      width: RING_SIZE,
+      height: RING_SIZE,
     },
+    ringSvg: { position: 'absolute' },
     numberRow: {
       flexDirection: 'row',
       justifyContent: 'center',
@@ -309,7 +256,7 @@ const styles = StyleSheet.create({
     },
     buttonContainer: {
       position: 'absolute',
-      bottom: 80,
+      bottom: 40,
       width: "100%",
       flexDirection: 'row',
       justifyContent: 'center',
@@ -330,14 +277,6 @@ const styles = StyleSheet.create({
     finishedText: { color: 'white', fontSize: 72, includeFontPadding: false, marginBottom: 50 },
     finishedButton: { borderColor: 'white', borderWidth: 2, paddingHorizontal: 30, paddingVertical: 12 },
     finishedButtonText: { color: 'white', fontSize: 18 },
-    savedContainer: {
-      position: 'absolute',
-      bottom: 160,
-      width: '100%',
-      paddingLeft: 15,
-    },
-    savedHeading: { color: '#888', fontSize: 14, marginLeft: 5, marginBottom: 6 },
-    savedRow: { paddingRight: 15 },
   });
 
 

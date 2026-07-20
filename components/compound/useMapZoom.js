@@ -9,32 +9,25 @@ import {
 
 // Metro's ease-in-out for the map moves.
 const EASE = Easing.bezier(0.4, 0, 0.2, 1);
-const ZOOM_SCALE = 3.2;
+const ZOOM_SCALE = 2.8;
 const ZOOM_MS = 450; // pan + zoom from idle
 const SWEEP_MS = 350; // lateral move between cities at the same zoom
 const RESET_MS = 400; // zoom back out
 
-// Idle, the map is a full-width strip (~38% of the screen) at the top. When a
-// city is selected the strip scales up until the map covers the WHOLE screen
-// and the city sits at the screen's centre, with the header/rows drawn over
-// it (refs 012512/012544). The zoom math therefore centres on the window,
-// not the strip.
+// The WP map is a shallow strip, but a little taller than its source aspect on
+// modern narrow phones. Keep it bounded so it never consumes half the page.
 const WIN = Dimensions.get('window');
 const VIEWPORT_W = WIN.width;
-// Match the source image's aspect (1280x712) so land isn't stretched.
-export const MAP_DISPLAY_H = Math.round(WIN.width * (712 / 1280));
-const SCREEN_H = WIN.height;
+export const MAP_DISPLAY_H = Math.round(Math.min(WIN.height * 0.31, WIN.width * 0.68));
+const VIEWPORT_H = MAP_DISPLAY_H;
 
-// Translate needed to bring a city's projected point to the SCREEN centre
-// when the strip is scaled by `s` about its own centre.
-//   screenPos(p) = stripCentre + s * (p - stripCentre) + t
-// Solve for t with screenPos = (W/2, SCREEN_H/2).
+// Translate the selected city to the centre of the clipped map viewport.
 const centreOn = (xPct, yPct, s) => {
   const px = (xPct / 100) * VIEWPORT_W;
-  const py = (yPct / 100) * MAP_DISPLAY_H;
+  const py = (yPct / 100) * VIEWPORT_H;
   return {
     tx: -s * (px - VIEWPORT_W / 2),
-    ty: SCREEN_H / 2 - MAP_DISPLAY_H / 2 - s * (py - MAP_DISPLAY_H / 2),
+    ty: -s * (py - VIEWPORT_H / 2),
   };
 };
 

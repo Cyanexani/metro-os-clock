@@ -178,21 +178,15 @@ export default function WorldClock({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Full-screen map layer. Idle it occupies the top strip; selecting a
-          city zooms it across the entire screen BEHIND the header and rows
-          (refs 012512/012544). Touches pass through it. */}
-      <WorldMap
-        cities={myCities}
-        selectedId={selectedId}
-        date={time}
-        mapAnimatedStyle={mapAnimatedStyle}
-      />
-
-      {/* Strip-sized touch target: tapping the map area zooms back out. */}
+      {/* The pivot already says "world clock", so do not repeat the title over
+          the map. The map stays inside this fixed, clipped WP-style strip. */}
       <Pressable style={styles.mapContainer} onPress={deselect}>
-        <Text style={[styles.overline, fonts.regular]} pointerEvents="none">
-          WORLD CLOCK
-        </Text>
+        <WorldMap
+          cities={myCities}
+          selectedId={selectedId}
+          date={time}
+          mapAnimatedStyle={mapAnimatedStyle}
+        />
       </Pressable>
 
       {/* Local Time Header */}
@@ -280,16 +274,7 @@ export default function WorldClock({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: 'black' },
 
-  mapContainer: { width: '100%', height: MAP_DISPLAY_H, backgroundColor: 'transparent' },
-
-  overline: {
-    position: 'absolute',
-    top: 12,
-    left: 20,
-    color: 'white',
-    fontSize: 13,
-    letterSpacing: 1,
-  },
+  mapContainer: { width: '100%', height: MAP_DISPLAY_H, backgroundColor: 'black', overflow: 'hidden' },
 
   listContainer: { flex: 1 },
   listContent: { paddingBottom: 20 },

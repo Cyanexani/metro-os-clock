@@ -17,6 +17,7 @@ class BootReceiver : BroadcastReceiver() {
             // Restart the widget minute-tick
             ClockWidgetProvider.updateAll(context)
             ClockWidgetProvider.scheduleNextTick(context)
+            AlarmScheduler.restore(context)
         }
     }
 }

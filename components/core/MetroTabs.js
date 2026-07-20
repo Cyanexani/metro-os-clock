@@ -194,11 +194,12 @@ const styles = StyleSheet.create({
   },
   appTitle: {
     color: 'white',
-    fontFamily: 'selawikSemibold',
-    fontSize: 14,
-    letterSpacing: 1,
+    fontFamily: 'selawikLight',
+    fontSize: 38,
     paddingLeft: 20,
     paddingTop: 12,
+    lineHeight: 44,
+    textTransform: 'lowercase',
   },
   screenContainer: {
     height: SCREEN_HEIGHT - 164, // title + tab strip + bottom app bar
