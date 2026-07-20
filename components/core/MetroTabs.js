@@ -39,17 +39,27 @@ const MetroTabs = ({
   // main animated node
   // everything else is interpolated on this node
   const scrollViewX = useSharedValue(0);
-  const headerItemsWidthArray = useSharedValue(new Array(screenCnt+1).fill(0));
+  // Measured x of each pivot header within the header row.
+  const headerPositions = useSharedValue(new Array(screenCnt).fill(0));
   const scrollHandler = useAnimatedScrollHandler((event) => {
     scrollViewX.value = event.contentOffset.x;
   });
 
-  // WP Pivot: the small app title is FIXED; only the pivot headers parallax.
-  // (A panorama-style 0.25x translate scrolled the title off-screen, leaving
-  // a lone "k" by the last tab.)
+  // WP Pivot: the small app title is FIXED; the header row slides so the
+  // ACTIVE title lands at the left edge. A blanket parallax factor drifts
+  // out of sync with the real title widths — by the last tab "world clock"
+  // overshot off-screen entirely.
+  const snapPoints = screens.map((_, i) => i * SCREEN_SNAP_INTERVAL);
   const animatedHeaderTransformStyle = useAnimatedStyle(() => {
     return {
-      transform: [{ translateX: -(scrollViewX.value * 0.6) }]
+      transform: [{
+        translateX: interpolate(
+          scrollViewX.value,
+          snapPoints,
+          headerPositions.value.map((x) => -x),
+          'clamp'
+        )
+      }]
     };
   });
 
@@ -59,11 +69,12 @@ const MetroTabs = ({
       ?.scrollTo({ animatedRef: animatedRef, x: index * SCREEN_SNAP_INTERVAL, animated: true });
   }, []);
 
-  // Get total header width so we can apply parallax accordingly
-  const onHeaderLayout = useCallback(async (index, event) => {
-    const {x, y, height, width} = event.nativeEvent.layout;
-    headerItemsWidthArray.value = [...headerItemsWidthArray.value];
-    headerItemsWidthArray.value[index+1] = headerItemsWidthArray.value[index] + width*-1; // negative cause header translates to left
+  // Record where each header actually sits so the slide can align it.
+  const onHeaderLayout = useCallback((index, event) => {
+    const { x } = event.nativeEvent.layout;
+    const next = [...headerPositions.value];
+    next[index] = x;
+    headerPositions.value = next;
   }, []);
 
   const setTabIndex = (index) => {
