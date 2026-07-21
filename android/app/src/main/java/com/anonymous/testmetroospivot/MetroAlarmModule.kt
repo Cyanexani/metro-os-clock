@@ -26,4 +26,42 @@ class MetroAlarmModule(private val context: ReactApplicationContext) :
         AlarmScheduler.consumeFired(context).forEach { result.pushString(it) }
         promise.resolve(result)
     }
+
+    // Countdown timer rides the same AlarmManager pipeline as alarms so it
+    // rings on the lock screen / with the app killed.
+    @ReactMethod
+    fun scheduleTimer(triggerAtMs: Double, promise: Promise) {
+        try {
+            AlarmScheduler.scheduleTimer(context, triggerAtMs.toLong())
+            promise.resolve(true)
+        } catch (error: Exception) {
+            promise.reject("TIMER_SCHEDULE_FAILED", error)
+        }
+    }
+
+    @ReactMethod
+    fun cancelTimer(promise: Promise) {
+        try {
+            AlarmScheduler.cancelTimer(context)
+            promise.resolve(true)
+        } catch (error: Exception) {
+            promise.reject("TIMER_CANCEL_FAILED", error)
+        }
+    }
+
+    // Stops the native ring service (used when the user dismisses from the
+    // in-app overlay while the app is foregrounded).
+    @ReactMethod
+    fun stopRinging(promise: Promise) {
+        try {
+            context.startService(
+                android.content.Intent(context, AlarmRingService::class.java).apply {
+                    action = AlarmRingService.ACTION_DISMISS
+                }
+            )
+            promise.resolve(true)
+        } catch (error: Exception) {
+            promise.reject("STOP_RINGING_FAILED", error)
+        }
+    }
 }

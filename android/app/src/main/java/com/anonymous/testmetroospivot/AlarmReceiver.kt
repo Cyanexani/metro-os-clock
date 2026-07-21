@@ -19,7 +19,9 @@ class AlarmReceiver : BroadcastReceiver() {
 
         if (intent.getBooleanExtra("repeating", false)) {
             AlarmScheduler.scheduleNextRepeat(context, intent.getStringExtra("alarmId") ?: return)
-        } else if (intent.action?.endsWith("ALARM_SNOOZE") != true) {
+        } else if (intent.action?.endsWith("ALARM_SNOOZE") != true &&
+            !intent.getBooleanExtra("isTimer", false)
+        ) {
             AlarmScheduler.markFired(context, intent.getStringExtra("alarmId") ?: return)
         }
     }

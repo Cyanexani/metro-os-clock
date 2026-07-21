@@ -74,6 +74,9 @@ const WheelColumn = ({ labels, selectedIndex, onSelect }) => {
 
   return (
     <View style={styles.wheel}>
+      {/* The amber selection tile is pinned to the slot line — the values
+          scroll through it; it never moves with the finger. */}
+      <View pointerEvents="none" style={styles.fixedSlotTile} />
       <ScrollView
         ref={scrollRef}
         style={StyleSheet.absoluteFill}
@@ -95,14 +98,12 @@ const WheelColumn = ({ labels, selectedIndex, onSelect }) => {
           const isSelected = i === selectedIndex;
           return (
             <View key={label + i} style={styles.tileSlot}>
+              {/* The selected tile stays transparent — the fixed amber tile
+                  behind it provides the colour; only the text scrolls. */}
               <View
                 style={[
                   styles.tile,
-                  isSelected
-                    ? styles.tileSelected
-                    : interacting
-                      ? styles.tileIdle
-                      : styles.tileHidden,
+                  !isSelected && (interacting ? styles.tileIdle : styles.tileHidden),
                 ]}
               >
                 <Text
@@ -194,6 +195,15 @@ const styles = StyleSheet.create({
 
   pickerRow: { flex: 1, flexDirection: 'row', justifyContent: 'center', paddingHorizontal: 12 },
   wheel: { width: TILE + TILE_GAP, marginHorizontal: 3, height: PICKER_VIEW_H, overflow: 'hidden' },
+  // Pinned amber selection tile — sits at the slot line behind the wheel.
+  fixedSlotTile: {
+    position: 'absolute',
+    top: SLOT_TOP + TILE_GAP / 2,
+    left: TILE_GAP / 2,
+    width: TILE,
+    height: TILE,
+    backgroundColor: ACCENT,
+  },
   tileSlot: { height: TILE_ROW_H, alignItems: 'center', justifyContent: 'center' },
   tile: { width: TILE, height: TILE, justifyContent: 'center', alignItems: 'center' },
   tileSelected: { backgroundColor: ACCENT },

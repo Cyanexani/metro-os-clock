@@ -13,6 +13,26 @@ object AlarmScheduler {
     private const val PREFS = "metro_native_alarms"
     private const val KEY_ALARMS = "alarms"
     private const val KEY_FIRED = "fired_ids"
+    private const val TIMER_ID = "__metro_timer__"
+
+    // The countdown timer reuses the alarm ring pipeline (receiver → foreground
+    // service → full-screen activity) so it also fires on the lock screen.
+    fun scheduleTimer(context: Context, triggerAt: Long) {
+        scheduleAt(context, timerJson(), triggerAt, false)
+    }
+
+    fun cancelTimer(context: Context) {
+        val manager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        manager.cancel(alarmPendingIntent(context, timerJson(), false))
+    }
+
+    private fun timerJson(): JSONObject = JSONObject().apply {
+        put("id", TIMER_ID)
+        put("name", "timer")
+        put("snooze", false)
+        put("isTimer", true)
+        put("repeat", JSONArray())
+    }
 
     fun sync(context: Context, json: String) {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -142,6 +162,7 @@ object AlarmScheduler {
             putExtra("sound", alarm.optString("sound", ""))
             putExtra("snooze", alarm.optBoolean("snooze", true))
             putExtra("repeating", repeat.length() > 0)
+            putExtra("isTimer", alarm.optBoolean("isTimer", false))
         }
         val requestCode = (id + if (snooze) ":snooze" else ":alarm").hashCode()
         return PendingIntent.getBroadcast(

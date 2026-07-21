@@ -35,7 +35,21 @@ const TimePicker = ({
   const [activeID, setActiveID] = useState(initialSelectedIndex + halfSquareCount);
   const [isScrolling, setIsScrolling] = useState(false);
   const [expanded, setExpanded] = useState(true);
+  // WP behaviour: at rest only the highlighted value is visible; the
+  // neighbouring outlined squares appear while touching/scrolling and fade
+  // out shortly after the finger lifts.
+  const [interacting, setInteracting] = useState(false);
+  const hideTimer = useRef(null);
   const flatListRef = useRef(null);
+
+  const showNeighbours = () => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    setInteracting(true);
+  };
+  const scheduleHide = () => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(() => setInteracting(false), 700);
+  };
 
   const SQUARE_HEIGHT_WITH_MARGIN = (squareDimension.height + squareDimension.margin*2);
   const CONTAINER_MAX_HEIGHT = SQUARE_HEIGHT_WITH_MARGIN * effectiveSquareCount;
@@ -109,6 +123,8 @@ const TimePicker = ({
   // scroll end handlers don't fire when touching on square causes the scrolling
   // So, we call onValueChange() here too
   const touchHandler = (item) => {
+    showNeighbours();
+    scheduleHide();
     onValueChange(item.index - halfSquareCount, item.text); /* index and value */
   }
 
@@ -139,18 +155,21 @@ const TimePicker = ({
   // scrollBeginHandler and endHandlers are not firing during this time. There is no work-around
   const scrollBeginHandler = (event) => {
     setIsScrolling(true);
+    showNeighbours();
     /* Uncomment to use expand/collapse feature. Incomplete */
     // setExpanded(true);
   }
 
   const scrollEndHandler = (event) => {
     setIsScrolling(false);
+    scheduleHide();
   }
 
   const momentumScrollEndHandler = (event) => {
     if (flatListData[activeID]) {
       onValueChange(flatListData[activeID].index - halfSquareCount, flatListData[activeID].text); /* index and value */
     }
+    scheduleHide();
 
     /* Uncomment to use expand/collapse feature. Incomplete */
     // setExpanded(false);
@@ -166,6 +185,7 @@ const TimePicker = ({
         flatListRef={flatListRef}
         setExpand={setExpanded}
         isScrolling={isScrolling}
+        interacting={interacting}
         dimension={squareDimension}
       />
     );
@@ -211,7 +231,7 @@ const TimePicker = ({
               scrollEventThrottle={16}
               initialNumToRender={effectiveSquareCount}
               initialScrollIndex={initialSelectedIndex}
-              extraData={activeID}
+              extraData={[activeID, isScrolling, interacting]}
               showsVerticalScrollIndicator={false}
               showsHorizontalScrollIndicator={false}
               getItemLayout={(data, index) => ({
@@ -251,13 +271,14 @@ const TimePicker = ({
 // scrollBeginHandler and endHandlers are not firing during this time. There is no work-around
 
 const Square = ({
-    item, 
-    activeTextColor, 
-    inactiveTextColor, 
+    item,
+    activeTextColor,
+    inactiveTextColor,
     flatListRef,
     setExpand,
     onTouch,
     isScrolling = false,
+    interacting = false,
     dimension,
     style,
   }) => {
@@ -280,24 +301,28 @@ const Square = ({
     if (item.text === '') {
       return <View style={[styles.square, { backgroundColor: 'transparent' }]} />;
     }
-    
-    const border = isScrolling ? dimension.borderWidth : (item.state ? 0 : dimension.borderWidth);
+
+    // At rest only the highlighted value shows (WP behaviour): neighbours are
+    // fully hidden until the user touches or scrolls the column.
+    const showIdle = isScrolling || interacting;
+    const border = item.state ? 0 : (showIdle ? dimension.borderWidth : 0);
     const textColor = item.state ? activeTextColor : inactiveTextColor;
-  
+    const hidden = !item.state && !showIdle;
+
     const pressHandler = () => {
       flatListRef?.current?.scrollToIndex({index: item.index});
       onTouch(item);
       /* Uncomment to use expand/collapse feature. Incomplete */
       // setExpand((prevState) => (!prevState));
     }
-  
+
     return (
       <TouchableWithoutFeedback onPress={pressHandler}>
-      <View style={[ 
-        styles.square, 
-        {borderWidth: border, borderColor: inactiveTextColor} 
+      <View style={[
+        styles.square,
+        {borderWidth: border, borderColor: inactiveTextColor}
       ]}>
-        <Text style={[ styles.text, {color: textColor,} ]}>
+        <Text style={[ styles.text, {color: textColor}, hidden && { opacity: 0 } ]}>
           {item.text}
         </Text>
       </View>

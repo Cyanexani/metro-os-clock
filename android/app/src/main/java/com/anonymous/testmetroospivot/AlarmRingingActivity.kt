@@ -33,9 +33,10 @@ class AlarmRingingActivity : Activity() {
 
     private fun buildContent(): LinearLayout {
         val density = resources.displayMetrics.density
+        val isTimer = intent.getBooleanExtra("isTimer", false)
         val hour = intent.getIntExtra("hour24", 0)
         val minute = intent.getIntExtra("minute", 0)
-        val time = String.format("%02d:%02d", hour, minute)
+        val time = if (isTimer) "time's up" else String.format("%02d:%02d", hour, minute)
 
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -44,7 +45,7 @@ class AlarmRingingActivity : Activity() {
             setBackgroundColor(Color.rgb(0, 74, 135))
 
             addView(TextView(context).apply {
-                text = intent.getStringExtra("alarmName") ?: "Alarm"
+                text = if (isTimer) "TIMER" else intent.getStringExtra("alarmName") ?: "Alarm"
                 setTextColor(Color.WHITE)
                 textSize = 22f
                 gravity = Gravity.CENTER
@@ -53,7 +54,7 @@ class AlarmRingingActivity : Activity() {
             addView(TextView(context).apply {
                 text = time
                 setTextColor(Color.WHITE)
-                textSize = 76f
+                textSize = if (isTimer) 56f else 76f
                 gravity = Gravity.CENTER
                 typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
                 setPadding(0, (8 * density).toInt(), 0, (52 * density).toInt())
@@ -61,7 +62,7 @@ class AlarmRingingActivity : Activity() {
             addView(LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER
-                if (intent.getBooleanExtra("snooze", true)) {
+                if (!isTimer && intent.getBooleanExtra("snooze", true)) {
                     addView(alarmButton("snooze", AlarmRingService.ACTION_SNOOZE))
                 }
                 addView(alarmButton("dismiss", AlarmRingService.ACTION_DISMISS))

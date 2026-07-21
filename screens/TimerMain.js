@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { StyleSheet, View, Dimensions, Text, Vibration } from "react-native";
+import { StyleSheet, View, Dimensions, Text, Vibration, NativeModules, Platform } from "react-native";
 import { Audio } from 'expo-av';
+import * as Notifications from 'expo-notifications';
 import Svg, { Circle } from 'react-native-svg';
 import Button from "../components/core/Button";
 import { fonts } from "../styles/fonts";
@@ -12,6 +13,39 @@ import { useSettings } from "../context/SettingsContext";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const RING_SIZE = Math.min(330, SCREEN_WIDTH - 54);
 const RING_RADIUS = (RING_SIZE - 12) / 2;
+
+const nativeAlarm = Platform.OS === 'android' ? NativeModules.MetroAlarm : null;
+
+// Mirror the running countdown into an OS-level trigger so the timer still
+// rings on the lock screen, with the app backgrounded, or killed. On Android
+// this rides the same AlarmManager -> foreground-service pipeline as alarms;
+// elsewhere it falls back to a scheduled notification.
+let timerNotifId = null;
+const scheduleOsTimer = async (secondsFromNow) => {
+  const triggerAt = Date.now() + secondsFromNow * 1000;
+  try {
+    if (nativeAlarm?.scheduleTimer) {
+      await nativeAlarm.scheduleTimer(triggerAt);
+      return;
+    }
+    timerNotifId = await Notifications.scheduleNotificationAsync({
+      content: { title: 'Timer', body: "Time's up", sound: true },
+      trigger: { channelId: 'alarms', date: new Date(triggerAt) },
+    });
+  } catch (e) { }
+};
+const cancelOsTimer = async () => {
+  try {
+    if (nativeAlarm?.cancelTimer) {
+      await nativeAlarm.cancelTimer();
+      return;
+    }
+    if (timerNotifId) {
+      await Notifications.cancelScheduledNotificationAsync(timerNotifId);
+      timerNotifId = null;
+    }
+  } catch (e) { }
+};
 
 function useInterval(callback, intervalDelay) {
   const savedCallback = useRef();
@@ -48,6 +82,10 @@ const TimerMain = ({
   const [delay, setDelay] = useState(null);
   const [finished, setFinished] = useState(false);
   const soundRef = useRef(null);
+  // Wall-clock deadline for the running countdown. JS timers freeze while the
+  // phone is locked/backgrounded, so ticks recompute from this instead of
+  // decrementing — the display catches up instantly on resume.
+  const endAtRef = useRef(null);
 
   const stopSound = async () => {
     if (soundRef.current) {
@@ -80,46 +118,69 @@ const TimerMain = ({
       setSelectedHour(h);
       setSelectedMinute(m);
       setSelectedSecond(s);
-      setDelay(1000); // Start Timer
       const msec = (h*3600) + (m*60) + s;
       setCurrentSec(msec);
+      startCountdown(msec);
     }
   }, [route.params?.timer])
 
+  const startCountdown = (sec) => {
+    if (sec <= 0) return;
+    endAtRef.current = Date.now() + sec * 1000;
+    scheduleOsTimer(sec);
+    setDelay(250); // fast tick so the display resyncs promptly after unlock
+  };
+
+  const stopCountdown = () => {
+    endAtRef.current = null;
+    cancelOsTimer();
+    setDelay(null);
+  };
+
   useInterval(() => {
-
-    setCurrentSec((currentMsec) => {
-      if (currentMsec > 1) {
-        return (currentMsec-1);
-      } else {
-        setDelay(null);
-        setFinished(true);
-        if (settings.vibrateOnAlarm) {
-          Vibration.vibrate([500, 1000, 500, 1000], true);
-        }
-        playSound();
-        return 0;
+    const endAt = endAtRef.current;
+    if (endAt == null) return;
+    const remaining = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
+    setCurrentSec(remaining);
+    if (remaining <= 0) {
+      stopCountdown();
+      setFinished(true);
+      if (settings.vibrateOnAlarm && !nativeAlarm) {
+        Vibration.vibrate([500, 1000, 500, 1000], true);
       }
-
-    });
+      // On Android the native ring service owns the sound (it also covers
+      // locked/background/killed states); avoid doubling it in JS.
+      if (!nativeAlarm) playSound();
+    }
   }, delay);
 
   const handleReset = () => {
-    setDelay(null); // Stop timer
+    stopCountdown();
     setFinished(false);
     Vibration.cancel();
     stopSound();
+    if (nativeAlarm?.stopRinging) nativeAlarm.stopRinging().catch(() => { });
     const sec = (selectedHour*3600) + (selectedMinute*60) + selectedSecond;
     setCurrentSec(sec);
     console.log("Reset!");
   }
   const handleStartStop = () => {
-    setDelay(prevDelay => prevDelay ? null : 1000); // Start or stop timer
+    if (delay) {
+      // Pause: freeze the remaining seconds and drop the OS trigger.
+      const remaining = endAtRef.current
+        ? Math.max(0, Math.ceil((endAtRef.current - Date.now()) / 1000))
+        : currentSec;
+      stopCountdown();
+      setCurrentSec(remaining);
+    } else {
+      startCountdown(currentSec);
+    }
   }
 
   const dismissFinished = () => {
     Vibration.cancel();
     stopSound();
+    if (nativeAlarm?.stopRinging) nativeAlarm.stopRinging().catch(() => { });
     setFinished(false);
     const sec = (selectedHour*3600) + (selectedMinute*60) + selectedSecond;
     setCurrentSec(sec);
@@ -192,7 +253,12 @@ const TimerMain = ({
           {
             newTimer: async () => {
               console.log("Clicked on Add New Timer");
-              setDelay(null);
+              // Pause and disarm the OS trigger while picking a new duration.
+              const remaining = endAtRef.current
+                ? Math.max(0, Math.ceil((endAtRef.current - Date.now()) / 1000))
+                : currentSec;
+              stopCountdown();
+              setCurrentSec(remaining);
               navigation.navigate("TimerNew", {
                 initialHour: selectedHour,
                 initialMinute: selectedMinute,

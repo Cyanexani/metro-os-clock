@@ -94,17 +94,20 @@ class AlarmRingService : Service() {
         )
         val dismiss = servicePendingIntent(ACTION_DISMISS, 1)
         val snooze = servicePendingIntent(ACTION_SNOOZE, 2)
+        val isTimer = source.getBooleanExtra("isTimer", false)
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle(source.getStringExtra("alarmName") ?: "Alarm")
-            .setContentText("Alarm ringing")
+            .setContentTitle(
+                if (isTimer) "Timer" else source.getStringExtra("alarmName") ?: "Alarm"
+            )
+            .setContentText(if (isTimer) "Time's up" else "Alarm ringing")
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setOngoing(true)
             .setAutoCancel(false)
             .setFullScreenIntent(fullScreen, true)
-            .addAction(0, "Snooze", snooze)
+            .apply { if (!isTimer) addAction(0, "Snooze", snooze) }
             .addAction(0, "Dismiss", dismiss)
             .build()
     }
