@@ -14,6 +14,7 @@ import WorldClockSettings from './screens/WorldClockSettings';
 import { SettingsProvider } from './context/SettingsContext';
 import RingtoneScreen from './screens/RingtoneScreen';
 import BatteryOptPrompt from './components/compound/BatteryOptPrompt';
+import FullScreenIntentPrompt from './components/compound/FullScreenIntentPrompt';
 
 const Stack = createNativeStackNavigator();
 
@@ -46,6 +47,7 @@ export default function App() {
         </Stack.Navigator>
       </NavigationContainer>
       <BatteryOptPrompt />
+      <FullScreenIntentPrompt />
     </View>
     </SettingsProvider>
   );

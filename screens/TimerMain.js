@@ -143,14 +143,20 @@ const TimerMain = ({
     const remaining = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
     setCurrentSec(remaining);
     if (remaining <= 0) {
-      stopCountdown();
+      // Don't cancelOsTimer() here — on Android the AlarmManager trigger IS
+      // the ringer (it fires the native ring service at this same instant);
+      // cancelling would race it and could silence the ring.
+      endAtRef.current = null;
+      setDelay(null);
       setFinished(true);
-      if (settings.vibrateOnAlarm && !nativeAlarm) {
-        Vibration.vibrate([500, 1000, 500, 1000], true);
+      if (!nativeAlarm) {
+        // Non-Android: JS rings in-app; drop the fallback notification.
+        cancelOsTimer();
+        if (settings.vibrateOnAlarm) {
+          Vibration.vibrate([500, 1000, 500, 1000], true);
+        }
+        playSound();
       }
-      // On Android the native ring service owns the sound (it also covers
-      // locked/background/killed states); avoid doubling it in JS.
-      if (!nativeAlarm) playSound();
     }
   }, delay);
 
